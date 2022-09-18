@@ -15,7 +15,6 @@ DEFAULT_COLOR_BORDER_INNER = 'red' (str): デフォールトの境界色（内�
 DEFAULT_COLOR_BORDER_OUTER = 'blue' (str): デフォールトの境界色（外側）
 """
 import sys
-import os 
 import math 
 import numpy as np
 import random 
@@ -23,8 +22,6 @@ import copy
 # import inspect
 # import cairo 
 from typing import NamedTuple
-
-# sys.path.insert(0, os.path.abspath('../board/'))
 
 import common as com
 import kwargs as kw
