@@ -1,0 +1,29 @@
+  /Users/arim/mylocal/gridboard/docs/board:
+  total used in directory 488 available 763.5 GiB
+  drwxr-xr-x  27 arim  staff    864  9 19 08:15 .
+  drwxr-xr-x   4 arim  staff    128  9 19 08:14 ..
+  -rw-r--r--   1 arim  staff   6148  9 19 08:14 .DS_Store
+  drwxr-xr-x   9 arim  staff    288  9 19 08:14 .backcp
+  drwxr-xr-x  26 arim  staff    832  9 19 08:14 .ehist
+  drwxr-xr-x  15 arim  staff    480  9 19 08:14 .ipynb_checkpoints
+  -rw-r--r--   1 arim  staff   8114  9 19 08:14 210723properties.md
+  -rw-r--r--   1 arim  staff   1032  9 19 08:14 Makefile
+  -rw-r--r--@  1 arim  staff    564  9 19 08:14 README.md
+  -rw-r--r--   1 arim  staff     66  9 19 08:14 __init__.py
+  drwxr-xr-x  42 arim  staff   1344  9 19 08:14 __pycache__
+  -rw-r--r--   1 arim  staff   6798  9 19 08:14 _grid_locater.py
+  -rw-r--r--   1 arim  staff   6536  9 19 08:14 backupcaller.py
+  -rw-r--r--   1 arim  staff  56771  9 19 08:14 cboard.py
+  -rw-r--r--@  1 arim  staff  27154  9 19 08:14 classes.pdf
+  -rw-r--r--   1 arim  staff   8483  9 19 08:14 common.py
+  -rw-r--r--   1 arim  staff  44241  9 19 08:14 crtool.py
+  drwxr-xr-x  21 arim  staff    672  9 19 08:14 ctest
+  drwxr-xr-x  21 arim  staff    672  9 19 08:14 fig
+  drwxr-xr-x  19 arim  staff    608  9 19 08:14 hide
+  drwxr-xr-x   6 arim  staff    192  9 19 08:14 invalid_ctest220915
+  -rw-r--r--   1 arim  staff  10837  9 19 08:14 kwargs.py
+  -rw-r--r--   1 arim  staff  18188  9 19 08:14 loggable.py
+  -rw-r--r--@  1 arim  staff   2680  9 19 08:14 out.pdf
+  -rw-r--r--@  1 arim  staff  20157  9 19 08:14 packages.pdf
+  -rwxr-xr-x   1 arim  staff    108  9 19 08:14 path.py
+  drwxr-xr-x   6 arim  staff    192  9 19 08:14 pdf

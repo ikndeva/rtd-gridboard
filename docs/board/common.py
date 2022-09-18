@@ -28,13 +28,13 @@ debug=False
 
 def log(msg, outs=sys.stderr):
     """標準関数print(msg)のラッパー．出力ストリームoutsを与えるとそこへ，指定がなければstd.errへ，print(msg)の出力を書き込む．
-
+    
     Args: 
          msg (str) : 出力する文字列
-
+    
          outs (出力ストリーム) : 出力先．default=sys.stderr.
     """
-     print(f'{ msg }', file=outs)
+    print(f'{ msg }', file=outs)
 
 def panic(msg, outs=sys.stdout):
      """メッセージ文字列を標準出力に印刷して，例外を投げて実行を中止する．
