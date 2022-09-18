@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="ja" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>board.kwargs &mdash; GridBoard 0.7 ドキュメント</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/translations.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../../genindex.html" />
+    <link rel="search" title="検索" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> GridBoard
+          </a>
+              <div class="version">
+                v2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../board.html">board package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GridBoard</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">モジュールコード</a> &raquo;</li>
+      <li>board.kwargs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>board.kwargs のソースコード</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3 </span>
+<span class="c1"># coding: utf_8</span>
+<span class="c1"># bintree.py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">common</span> <span class="k">as</span> <span class="nn">com</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="c1">#parameters</span>
+<span class="c1"># verbose=True</span>
+<span class="n">debug</span><span class="o">=</span><span class="kc">False</span>
+
+<span class="c1"># # A template for docstring </span>
+<span class="c1"># Args: </span>
+<span class="c1"># ----------</span>
+<span class="c1"># name: type</span>
+<span class="c1">#   Desciptions ...</span>
+<span class="c1"># </span>
+<span class="c1"># Returns </span>
+<span class="c1"># ----------</span>
+<span class="c1"># </span>
+<span class="c1"># Atributes</span>
+<span class="c1"># ----------</span>
+<span class="c1"># </span>
+
+<span class="c1">#======</span>
+<span class="c1"># ヘルパー関数：キーワード引数辞書</span>
+<span class="c1">#======</span>
+
+<span class="c1"># キーワードの所属性テスト</span>
+<div class="viewcode-block" id="contains"><a class="viewcode-back" href="../../board.html#board.kwargs.contains">[ドキュメント]</a><span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;キーワード辞書がkeyの非None値を含むか？&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">key</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
+        <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;key is None!&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">((</span><span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">])</span></div>
+
+<span class="c1"># 値を取り出す．必須キーワードの検査も兼ねる．</span>
+<div class="viewcode-block" id="get"><a class="viewcode-back" href="../../board.html#board.kwargs.get">[ドキュメント]</a><span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">altkeys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;キーワード辞書kwargsにおいて，key値の検査をして，その値を返す. </span>
+<span class="sd">    もしそのkeyが見つからない場合には，続いて，次の動作を順に行う: </span>
+<span class="sd">    - キーdefaultが指定されていればそれを返す．してされていなければ，次へ進む．</span>
+<span class="sd">    - ブール値required=Trueが指定されていれば，直ちにエラーを起こして停止する．</span>
+<span class="sd">    - もし見つからなければNoneを返す．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">    	kwargs (dict): キーワード辞書 (None)</span>
+<span class="sd">    	key (int or str): 指定したキーワード. </span>
+<span class="sd">    	default (object): 任意の値．指定キーワードの値がNoneの場合に返すデフォールト値．</span>
+<span class="sd">    	required (bool): 必須キーワードかのフラグ．この値がTrueの場合，キーワードの値が未定義（None）ならば，エラーを投げる．default=False. </span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">    	object: 辞書におけるキーワードkeyの値．値がNoneの場合は上記の説明に従う． </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">keys_</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1">## keyを処理</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">keys_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span> <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;key=&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">&quot; must be str!&#39;</span><span class="p">)</span>
+    <span class="c1">## altkeysを処理</span>
+    <span class="k">if</span> <span class="n">altkeys</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="n">com</span><span class="o">.</span><span class="n">is_sequence_type</span><span class="p">(</span><span class="n">altkeys</span><span class="p">,</span> <span class="n">elemtype</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span> 
+            <span class="n">keys_</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">altkeys</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span> <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;altkeys=&quot;</span><span class="si">{</span><span class="n">altkeys</span><span class="si">}</span><span class="s1">&quot; must be of sequence type (str, tuple, list, dict...)!&#39;</span><span class="p">)</span>
+
+    <span class="c1">#キーリストkeys_のメンバーを順にテストする</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys_</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span> 
+            <span class="k">return</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    
+    <span class="c1">#まだ見つからなければ，次を試す</span>
+    <span class="k">if</span> <span class="n">default</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span>
+    <span class="k">elif</span> <span class="n">required</span><span class="p">:</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> is not defined!&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<span class="c1"># 値を取り出す．必須キーワードの検査も兼ねる．</span>
+<div class="viewcode-block" id="get_required"><a class="viewcode-back" href="../../board.html#board.kwargs.get_required">[ドキュメント]</a><span class="k">def</span> <span class="nf">get_required</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;キーワード辞書kwargsのkeyの値を返す. 未定義ならエラーを投げる</span>
+
+<span class="sd">    * get(kwargs=kwargs, key=key, default=None)へのラッパー．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div>
+
+<span class="c1"># 必須キーワードの検査</span>
+<div class="viewcode-block" id="require"><a class="viewcode-back" href="../../board.html#board.kwargs.require">[ドキュメント]</a><span class="k">def</span> <span class="nf">require</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;キーワード辞書kwargsがキーまたはキーのリストkeysのキーを含むかどうか検査する．検査に成功するとTrueを返し，失敗するとエラーを投げる．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">panic0</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> is required!&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@require: a single key&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">contains</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">keys</span><span class="p">):</span>
+            <span class="n">panic0</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@require: multiple keys&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key0</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">key0</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">,</span>
+                       <span class="sa">f</span><span class="s1">&#39;key=</span><span class="si">{</span><span class="n">key0</span><span class="si">}</span><span class="s1"> must be str!: type=</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">key0</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">contains</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">key0</span><span class="p">):</span>
+                <span class="n">panic0</span><span class="p">(</span><span class="n">key0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span> </div>
+            
+<span class="c1">##キーワード引数辞書からの部分コピー</span>
+<div class="viewcode-block" id="extract"><a class="viewcode-back" href="../../board.html#board.kwargs.extract">[ドキュメント]</a><span class="k">def</span> <span class="nf">extract</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">required</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">deleted</span><span class="o">=</span><span class="p">[],</span> 
+            <span class="n">trans</span><span class="o">=</span><span class="p">[],</span> <span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">reduced</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> 
+            <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    キーワード引数辞書から指定した属性を抽出して得られた新しい辞書を返す．</span>
+<span class="sd">    このとき，パラメータtransに指定したキーワード属性は，ptからpxへ単位変換を行う．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">    	kwargs (dict):  元のキーワード引数の辞書．</span>
+
+<span class="sd">    	keys (list(str)): 抽出するキーワードのリスト．Noneならば，transと全てのキーをコピーする．空リスト`[]`のときは，trans以外のキーはコピーしない</span>
+
+<span class="sd">    	required (list(str)): 必須のキーワードのリスト．検査して含まれてなければ，エラーで停止する．keysと重複して良い．</span>
+
+<span class="sd">    	deleted (list(str)): 除去するキーワードのリスト．keysと重複してはいけない（重複すると返り値の辞書から除去されるので注意）．</span>
+
+<span class="sd">    	trans (list(str)): 値を変換して抽出するキーワードのリスト（keysに含まれていなくても良い）</span>
+
+<span class="sd">    	func (lambda): 座標変換関数. transのための座標変換関数またはラムダ式．ここに，関数func(xy)は，引数として，点xy=(x0,y0)または点のリストxy=[(x0,x1), (y0,y1), ...]の型の入力を受けつけること．</span>
+<span class="sd">    </span>
+<span class="sd">        reduced=False (bool): 関数kwargs.reduceを用いて，値がNoneのキーワードを除去したコピーを作成して返す．非破壊的であり，元の辞書は変更しない．</span>
+
+<span class="sd">    Returns: </span>
+
+<span class="sd">    	dict: 新しいキーワード引数の辞書 kwargs1. </span>
+
+<span class="sd">    - 全ての属性をコピーしたい時は，引数keys=Noneとおく．このとき，transで指定した変換を行い，他の全ての属性をコピーする．</span>
+<span class="sd">    - もしtrans以外の属性をコピーしたくない時は，明示的に`keys=[]`とおく．（空リスト[]と空値Noneのあつかいは異なるので注意）</span>
+
+<span class="sd">    Examples: </span>
+
+<span class="sd">    	例:描画情報`xy`を座標変換し，他のすべての属性を取り出す::</span>
+
+<span class="sd">        	kwargs1 = kw.extract(kwargs, trans=[&#39;xy&#39;], keys=None)</span>
+
+<span class="sd">    	例:属性&#39;fill&#39;, &#39;width&#39;, &#39;outline&#39;を取り出す::</span>
+
+<span class="sd">        	kwargs1 = </span>
+<span class="sd">		  kw.extract(kwargs=kwargs, </span>
+<span class="sd">		    keys=[&#39;fill&#39;, &#39;width&#39;, &#39;outline&#39;])</span>
+
+<span class="sd">    	例:属性&#39;fill&#39;, &#39;width&#39;, &#39;outline&#39;を取り出す::</span>
+
+<span class="sd">        	kwargs1 = </span>
+<span class="sd">		  kw.extract(kwargs=kwargs, </span>
+<span class="sd">		     keys=[&#39;xy&#39;, &#39;text&#39;, &#39;font&#39;, &#39;size&#39;, </span>
+<span class="sd">    			&#39;anchor&#39;, &#39;align&#39;, &#39;direction&#39;,])</span>
+
+<span class="sd">    	例: 指定属性 &#39;margin&#39;, &#39;padding&#39; 以外の全ての属性を取り出す::</span>
+
+<span class="sd">		kwargs1 = </span>
+<span class="sd">    		  kw.extract(kwargs, keys=None, </span>
+<span class="sd">    			deleted=[&#39;margin&#39;, &#39;padding&#39;])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@kwargs.extract: kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="c1">#前処理：</span>
+    <span class="c1">#もしkeysが空値Noneならば，すべてのキーをコピーする</span>
+    <span class="c1">#引数keysが空リスト`[]`のときは，trans以外の属性はコピーしない</span>
+    <span class="k">if</span> <span class="n">keys</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span> 
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="c1">#dict_keysからlistへ変換</span>
+
+    <span class="c1">#キーの検査</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span> 
+            <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;required key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> was not found!&#39;</span><span class="p">)</span>
+    
+    <span class="c1">#リストkeysとtransで重複するキーを，keysから除去する</span>
+    <span class="k">if</span> <span class="n">trans</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">trans</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span> <span class="c1">#exp: 非効率的:線形探索</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>  <span class="c1">#exp: 非効率的:線形探索</span>
+    <span class="c1">#実行処理</span>
+    <span class="n">kwargs1</span><span class="o">=</span><span class="p">{}</span>
+    <span class="c1">#keysを抽出して，新しいdictへ加える</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span> 
+        <span class="c1"># if key in kwargs and kwargs[key]: </span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span> 
+            <span class="n">kwargs1</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="c1"># if key in kwargs: </span>
+        <span class="c1">#     kwargs1[key] = kwargs[key]</span>
+                
+    <span class="c1">#与えられた関数funcで値を変換して，新しいdictへ加える</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">trans</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span> 
+            <span class="n">kwargs1</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+
+    <span class="c1">#キーの除去</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">deleted</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs1</span><span class="p">:</span> 
+            <span class="k">del</span> <span class="n">kwargs1</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="c1">#関数reduceを使って既約化したコピーを返す．</span>
+    <span class="k">if</span> <span class="n">reduced</span><span class="p">:</span>
+        <span class="n">kwargs1</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="n">kwargs1</span><span class="p">)</span>	<span class="c1">#コピーを返す．</span>
+        
+    <span class="k">return</span> <span class="n">kwargs1</span></div>
+
+
+<span class="c1">#その場の変換適用</span>
+<div class="viewcode-block" id="replace_apply"><a class="viewcode-back" href="../../board.html#board.kwargs.replace_apply">[ドキュメント]</a><span class="k">def</span> <span class="nf">replace_apply</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;キーワード引数辞書において，指定したキーに関数funcを適用して置き換える．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">    	kwargs (dict):  元のキーワード引数の辞書．</span>
+
+<span class="sd">    	keys (list(str)): 抽出するキーワードのリスト．Noneならば，transと全てのキーをコピーする．空リスト`[]`のときは，trans以外のキーはコピーしない</span>
+
+<span class="sd">    	func (lambda): 座標変換関数. transのための座標変換関数またはラムダ式．ここに，関数func(xy)は，引数として，点xy=(x0,y0)または点のリストxy=[(x0,x1), (y0,y1), ...]の型の入力を受けつけること．</span>
+<span class="sd">    </span>
+<span class="sd">    Returns: </span>
+
+<span class="sd">    	dict: 新しいキーワード引数の辞書 kwargs1. </span>
+
+<span class="sd">    * 引数のkwargsに破壊的変更を加えるので，注意すること．</span>
+
+<span class="sd">    * 主に，数値引数の離散化に用いる（px）. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@kwargs.replace_apply: kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">keys</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">kwargs</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">value</span><span class="p">:</span> 
+                <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="c1">#整数化</span>
+    <span class="k">return</span> <span class="n">kwargs</span></div>
+
+<span class="c1"># 必須キーワードの検査</span>
+<div class="viewcode-block" id="reduce"><a class="viewcode-back" href="../../board.html#board.kwargs.reduce">[ドキュメント]</a><span class="k">def</span> <span class="nf">reduce</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;キーワード辞書kwargsからNone値のキーと値を取り除き，残りを複製して得られた辞書を返す．元の辞書は破壊されず，コピーを返す．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">    	kwargs (dict):  元のキーワード引数の辞書．</span>
+
+<span class="sd">    Returns: </span>
+
+<span class="sd">    	dict: 新しいキーワード引数の辞書 kwargs1. </span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kwargs1</span> <span class="o">=</span> <span class="p">{}</span> 
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="kc">False</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@debug: reduce: key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> kwargs</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span> 
+            <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@debug: isinstance(value, np.ndarray)!: type(value)=</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">kwargs1</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">elif</span> <span class="n">value</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span> 
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">kwargs1</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">kwargs1</span> </div>
+            
+<span class="c1"># # 必須キーワードの検査</span>
+<span class="c1"># def reduce(kwargs=None):</span>
+<span class="c1">#     &quot;&quot;&quot;キーワード辞書kwargsからNone値のキーと値を取り除き，残りを複製して得られた辞書を返す．元の辞書は破壊されず，コピーを返す．</span>
+
+<span class="c1">#     Args: </span>
+
+<span class="c1">#     	kwargs (dict):  元のキーワード引数の辞書．</span>
+
+<span class="c1">#     Returns: </span>
+
+<span class="c1">#     	dict: 新しいキーワード引数の辞書 kwargs1. </span>
+
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     kwargs1 = {} </span>
+<span class="c1">#     for key in kwargs.keys():</span>
+<span class="c1">#         if True: print(f&#39;@debug: reduce: key={key} kwargs{kwargs}&#39;)</span>
+<span class="c1">#         value = </span>
+<span class="c1">#         if kwargs[key] == None: </span>
+<span class="c1">#             pass</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             kwargs1[key] = kwargs[key]</span>
+<span class="c1">#     return kwargs1 </span>
+            
+<span class="c1">#EOF</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Hiroki Arimura, Hokkaido University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

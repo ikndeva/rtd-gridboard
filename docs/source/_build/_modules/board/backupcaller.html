@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="ja" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>board.backupcaller &mdash; GridBoard 0.7 ドキュメント</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/translations.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../../genindex.html" />
+    <link rel="search" title="検索" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> GridBoard
+          </a>
+              <div class="version">
+                v2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../board.html">board package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GridBoard</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">モジュールコード</a> &raquo;</li>
+      <li>board.backupcaller</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>board.backupcaller のソースコード</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding: utf_8</span>
+<span class="sd">&quot;&quot;&quot;forward_medhods.py</span>
+
+<span class="sd">* 未定義メソッドの代理呼び出しをするクラス．</span>
+<span class="sd">* Pythonのリフレクション機能を用いる．</span>
+<span class="sd">* 220830: Created by Hiroki Arimura, arim@ist.hokudai.ac.jp</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+    <span class="c1"># Example::</span>
+
+    <span class="c1">#       import sys</span>
+    <span class="c1">#       import backupcaller as bc </span>
+    <span class="c1"># </span>
+    <span class="c1">#       class OtherObject:</span>
+    <span class="c1">#           &quot;&quot;&quot;転送先オブジェクトのクラス．</span>
+    <span class="c1">#           ふつうのオブジェクトであり，特別な準備は不要．</span>
+    <span class="c1">#           &quot;&quot;&quot;</span>
+    <span class="c1">#           def swim(self, name):</span>
+    <span class="c1">#               print(f&#39;\t@OtherObject: method=&quot;swim&quot; is called&#39;)</span>
+    <span class="c1">#               print(f&#39;An animal {name} swims!&#39;)</span>
+          
+    <span class="c1">#       class MyObject:</span>
+    <span class="c1">#           &quot;&quot;&quot;転送元オブジェクトのクラス．</span>
+    <span class="c1">#           &quot;&quot;&quot;</span>
+    <span class="c1">#           def __init__(self):</span>
+    <span class="c1">#               &quot;&quot;&quot;ここで，転送先オブジェクトを準備する．&quot;&quot;&quot;</span>
+    <span class="c1">#               self.child = OtherObject() #転送先オブジェクト</span>
+          
+    <span class="c1">#           ## メソッド転送</span>
+    <span class="c1">#           def __getattr__(self, name):</span>
+    <span class="c1">#               &quot;&quot;&quot;メソッドが未定義のとき，呼び出される特殊関数．</span>
+    <span class="c1">#       		未定義の属性呼び出しのときも呼ばれるので注意．</span>
+    <span class="c1">#               &quot;&quot;&quot;</span>
+    <span class="c1">#               print(f&#39;\t@MyObject: method=&quot;__getattr__&quot; is called&#39;)</span>
+    <span class="c1">#               return bc.BackupCaller(self.child, name, verbose=True)</span>
+          
+    <span class="c1">#           def walk(self, name):</span>
+    <span class="c1">#               print(f&#39;\t@OtherObject: method=swim is called&#39;)</span>
+    <span class="c1">#               print(f&#39;A cat {name} walk!&#39;)</span>
+          
+    <span class="c1">#       a_cat = MyObject()</span>
+          
+    <span class="c1">#       print(&#39;\n### EXP: Call a method &quot;walk&quot; defined on MyObject&#39;)</span>
+    <span class="c1">#       a_cat.walk(&#39;a_cat&#39;)</span>
+          
+    <span class="c1">#       print(&#39;\n### EXP: Call a method &quot;swim&quot; not defined on MyObject, but defined on OtherObject&#39;)</span>
+    <span class="c1">#       a_cat.swim(&#39;a_cat&#39;)</span>
+          
+    <span class="c1">#       print(&#39;\n### EXP: Call a method &quot;donothing&quot; not defined both on MyObject and OtherObject&#39;)</span>
+    <span class="c1">#       a_cat.donothing(&#39;a_cat&#39;)</span>
+
+
+<span class="c1">## メソッド転送</span>
+<div class="viewcode-block" id="BackupCaller"><a class="viewcode-back" href="../../board.html#board.backupcaller.BackupCaller">[ドキュメント]</a><span class="k">class</span> <span class="nc">BackupCaller</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;メソッド呼び出しの転送をするクラス．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">          host (Object) : 呼び出しの転送先オブジェクト．</span>
+
+<span class="sd">          fname (str) : 呼び出しの関数名/メソッド名．</span>
+
+<span class="sd">          verbose (bool) : デバグ用出力のフラグ. default=False. </span>
+
+<span class="sd">    Notes: </span>
+
+<span class="sd">          具体的な利用法は，下記のExampleを参照されたい．次の手順で，メソッド転送が実行される．</span>
+
+<span class="sd">          * `MyObject`の初期化時に，自分が実装していないメソッドの転送先オブジェクトに，`OtherObject`を設定する．</span>
+<span class="sd">    	  * `MyObject`は，特殊関数 `__getattr__()`を次のように実装する: </span>
+
+<span class="sd">               + もし関数名（属性名）`name`が自身に対して呼ばれたら，</span>
+<span class="sd">               + 代理オブジェクト`agent`と関数名`name`を引数として，オブジェクト BackupCaller(self.agent, name)を生成して，それを返り値として返す．この時点では，元の呼び出しの引数`(a1,...,aN)`は渡されないことに注意．</span>
+<span class="sd">          * 呼び出し側では，返り値のBackupCallerオブジェクトを受け取り，python処理系が，それに元の呼び出しの引数`(a1,...,aN)`を与えて実行する．</span>
+
+<span class="sd">    Example:: </span>
+
+<span class="sd">          import sys</span>
+<span class="sd">          import backupcaller as bc </span>
+<span class="sd">          </span>
+<span class="sd">          class OtherObject:</span>
+<span class="sd">              #転送先オブジェクトのクラス．</span>
+<span class="sd">              #ふつうのオブジェクトであり，特別な準備は不要．</span>
+<span class="sd">              def swim(self, name):</span>
+<span class="sd">                  print(f&#39;\t@OtherObject: method=&quot;swim&quot; is called&#39;)</span>
+<span class="sd">                  print(f&#39;An animal {name} swims!&#39;)</span>
+<span class="sd">          </span>
+<span class="sd">          class MyObject:</span>
+<span class="sd">              #転送元オブジェクトのクラス．</span>
+<span class="sd">              def __init__(self, agent=None):</span>
+<span class="sd">                  #ここで，転送先オブジェクトを準備する．#</span>
+<span class="sd">    		  if agent != None: </span>
+<span class="sd">                      self.agent = agent #転送先オブジェクト</span>
+<span class="sd">          </span>
+<span class="sd">              ## メソッド転送</span>
+<span class="sd">              def __getattr__(self, name):</span>
+<span class="sd">                  #メソッドが未定義のとき，呼び出される特殊関数．</span>
+<span class="sd">          	  #未定義の属性呼び出しのときも呼ばれるので注意．</span>
+<span class="sd">                  print(f&#39;\t@MyObject: method=&quot;__getattr__&quot; is called&#39;)</span>
+<span class="sd">                  return bc.BackupCaller(self.agent, name, verbose=True)</span>
+<span class="sd">          </span>
+<span class="sd">              def walk(self, name):</span>
+<span class="sd">                  print(f&#39;\t@OtherObject: method=swim is called&#39;)</span>
+<span class="sd">                  print(f&#39;A cat {name} walk!&#39;)</span>
+
+<span class="sd">          #a duck can swim</span>
+<span class="sd">          a_duck = OtherObject() </span>
+
+<span class="sd">          #a cat can walk, but cannot swim</span>
+<span class="sd">          a_cat = MyObject(agent=a_duck) </span>
+
+<span class="sd">          a_cat.walk(&#39;a_cat&#39;) #a cat can walk</span>
+<span class="sd">	  =&gt; walk</span>
+<span class="sd">          a_cat.swim(&#39;a_cat&#39;) #Since a cat cannot swim, a duck swims instead</span>
+<span class="sd">	  =&gt; swim</span>
+<span class="sd">          a_cat.donothing(&#39;a_cat&#39;)</span>
+<span class="sd">	  =&gt; fail</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">fname</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose_prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;元の呼び出し先のオブジェクト`host`と呼びされるメソッド名`fname`を受け取り，格納する．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="n">host</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fname</span> <span class="o">=</span> <span class="n">fname</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose_prefix</span> <span class="o">=</span> <span class="n">verbose_prefix</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;このオブジェクトのメソッド呼び出しにおいて，常に呼び出される特殊関数．</span>
+<span class="sd">        * 引数`(arg1, ..., kwargs1, ...)` は，元のメソッド呼び出しの引数．</span>
+<span class="sd">        * タスクとして，自身に格納した元の呼び出しのオブジェクト`host`とメソッド名`fname`に対して，呼び出し`host.fname(arg1, ..., kwargs1, ...)`を実行する．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose_prefix</span><span class="p">:</span> 
+            <span class="n">prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose_prefix</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@BackupCaller: method=&quot;__call__&quot; is called&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fname</span><span class="p">):</span> 
+            <span class="n">func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fname</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@BackupCaller: found method=</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">func</span><span class="p">)</span><span class="si">}</span><span class="s1"> in self.host=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@BackupCaller: exec method=</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">func</span><span class="p">)</span><span class="si">}</span><span class="s1"> as &quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fname</span><span class="si">}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+            <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="c1"># return self.host.func(self.fname, *args, **kwargs)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;error: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="si">}</span><span class="s1"> has no method </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fname</span><span class="si">}</span><span class="s1">!&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+<span class="c1">## EOF</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Hiroki Arimura, Hokkaido University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

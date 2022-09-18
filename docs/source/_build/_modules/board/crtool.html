@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="ja" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>board.crtool &mdash; GridBoard 0.7 ドキュメント</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/translations.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../../genindex.html" />
+    <link rel="search" title="検索" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> GridBoard
+          </a>
+              <div class="version">
+                v2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../board.html">board package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GridBoard</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">モジュールコード</a> &raquo;</li>
+      <li>board.crtool</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>board.crtool のソースコード</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding: utf_8</span>
+<span class="c1"># btest1.py</span>
+<span class="sd">&quot;&quot;&quot;Cairoライブラリの描画機能を提供するモジュール．</span>
+
+<span class="sd">Attributes: </span>
+
+<span class="sd">  FONT_SLANT (dict(str, cairo.FontSlant)) : </span>
+<span class="sd">    フォントの斜体スタイルを表す定数の辞書．次の値をもつ</span>
+
+<span class="sd">    * &#39;italic&#39;: cairo.FontSlant.ITALIC</span>
+<span class="sd">    * &#39;normal&#39;: cairo.FontSlant.NORMAL</span>
+<span class="sd">    * &#39;oblique&#39;: cairo.FontSlant.OBLIQUE</span>
+
+<span class="sd">  FONT_WEIGHT  (dict(str, cairo.FontWeight)) : </span>
+<span class="sd">    フォントの太字スタイルを表す定数の辞書．次の値をもつ．</span>
+
+<span class="sd">    * &#39;bold&#39;: cairo.FontWeight.BOLD</span>
+<span class="sd">    * &#39;normal&#39;: cairo.FontWeight.NORMAL</span>
+
+<span class="sd">  LINE_CAP (dict(str, Object)) : </span>
+<span class="sd">    線の終端のスタイルを表す定数の辞書．次の値をもつ．</span>
+
+<span class="sd">    * &#39;square&#39;: cairo.LINE_CAP_SQUARE</span>
+<span class="sd">    * &#39;round&#39;: cairo.LINE_CAP_ROUND</span>
+<span class="sd">    * &#39;butt&#39;: cairo.LINE_CAP_BUTT</span>
+
+<span class="sd">  LINE_JOIN (dict(str, Object)) : </span>
+<span class="sd">    線の結合部のスタイルを表す定数の辞書．次の値をもつ．</span>
+
+<span class="sd">    * &#39;miter&#39;: cairo.LINE_JOIN_MITER</span>
+<span class="sd">    * &#39;round&#39;: cairo.LINE_JOIN_ROUND</span>
+<span class="sd">    * &#39;bevel&#39;: cairo.LINE_JOIN_BEVEL</span>
+
+<span class="sd">  ALIGN_X (dict(str, float)) : </span>
+<span class="sd">    位置合わせ用のx方向のアンカー値を表す定数の辞書．範囲`[0,1]`の値をとり，辺上の正規化された位置を表す．複数の別名を提供している．</span>
+
+<span class="sd">    * &#39;left&#39;   : 0.0, &#39;center&#39;  : 0.5, &#39;right&#39;  : 1.0, #標準名</span>
+<span class="sd">    * &#39;beg&#39; : 0.0, &#39;mid&#39; : 0.5, &#39;end&#39; : 1.0, #xとy方向の共通名</span>
+
+<span class="sd">  ALIGN_Y  (dict(str, float)) : </span>
+<span class="sd">    位置合わせ用のy方向のアンカー値を表す定数の辞書．範囲`[0,1]`の値をとり，辺上の正規化された位置を表す．複数の別名を提供している．</span>
+
+<span class="sd">    * &#39;top&#39;    : 0.0, &#39;middle&#39; : 0.5, &#39;bottom&#39; : 1.0, #標準名</span>
+<span class="sd">    * &#39;bot&#39; : 1.0, &#39;above&#39;  : 0.0, &#39;below&#39;  : 1.0, #別名</span>
+<span class="sd">    * &#39;beg&#39; : 0.0, &#39;mid&#39; : 0.5, &#39;end&#39; : 1.0, #xとy方向の共通名</span>
+
+<span class="sd">  MYCOL (dict(str, (float,float,float))) : </span>
+<span class="sd">    色を表す定数の辞書．色名の文字列に，RGB表現の三つ組$(r,g,b) \in [0,1]^3$を対応させる．</span>
+
+<span class="sd">    * pure color: &#39;red&#39;:(1,0,0),&#39;blue&#39;:(0,0,1),&#39;lightgreen&#39;:(0,1,0),</span>
+<span class="sd">    * basic color: &#39;yellow&#39;:(1,1,0),&#39;magenta&#39;:(1,0,1),&#39;cyan&#39;:(0,1,1),</span>
+<span class="sd">    * dark color: &#39;darkgreen&#39;:(0,0.5,0),&#39;darkred&#39;:(0.5,0,0),&#39;darkblue&#39;:(0,0,0.5),</span>
+<span class="sd">    * alias color: &#39;green&#39;:(0,0.5,0),&#39;brown&#39;:(0.5,0,0),&#39;navy&#39;:(0,0,0.5),&#39;orange&#39;:(1.0 - 0.125, 0.0 + 0.125, 0.0),</span>
+<span class="sd">    * black-and-white: &#39;black&#39;:(0,0,0), &#39;grey0&#39;:(0,0,0), &#39;grey10&#39;:(0.10,0.10,0.10), &#39;grey25&#39;:(0.25,0.25,0.25), &#39;grey50&#39;:(0.50,0.50,0.50), &#39;grey75&#39;:(0.75,0.75,0.75), &#39;grey100&#39;:(1,1,1), &#39;white&#39;:(1,1,1). </span>
+
+<span class="sd">  DARKCOL (dict(str, (float,float,float))) : </span>
+<span class="sd">    色を表す定数の辞書．色名の文字列に，RGB表現の三つ組$(r,g,b) \in [0,1]^3$を対応させる．</span>
+
+<span class="sd">        * pure color: &#39;red&#39;:(1,0,0),    &#39;blue&#39;:(0,0,1),</span>
+<span class="sd">        * dark color: &#39;darkgreen&#39;:(0,0.5,0), &#39;darkred&#39;:(0.5,0,0),    &#39;darkblue&#39;:(0,0,0.5),    &#39;orange&#39;:(1.0 - 0.125, 0.0 + 0.125, 0.0),</span>
+<span class="sd">        * black-and-white:     &#39;black&#39;:(0,0,0),     &#39;grey0&#39;:(0,0,0),     &#39;grey10&#39;:(0.10,0.10,0.10),     &#39;grey25&#39;:(0.25,0.25,0.25),     &#39;grey50&#39;:(0.50,0.50,0.50),     &#39;grey75&#39;:(0.75,0.75,0.75),     &#39;grey100&#39;:(1,1,1), </span>
+<span class="sd">  </span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">cairo</span> 
+<span class="kn">import</span> <span class="nn">math</span> 
+
+<span class="kn">import</span> <span class="nn">common</span> <span class="k">as</span> <span class="nn">com</span> 
+<span class="kn">import</span> <span class="nn">kwargs</span> <span class="k">as</span> <span class="nn">kw</span>
+
+<span class="n">verbose</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="c1">#Cairo定数</span>
+<span class="n">FONT_SLANT</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;italic&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">FontSlant</span><span class="o">.</span><span class="n">ITALIC</span><span class="p">,</span> <span class="c1">#pycairo</span>
+    <span class="s1">&#39;normal&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">FontSlant</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">,</span> <span class="c1">#pycairo</span>
+    <span class="s1">&#39;oblique&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">FontSlant</span><span class="o">.</span><span class="n">OBLIQUE</span><span class="p">,</span> <span class="c1">#pycairo</span>
+<span class="p">}</span>
+
+<span class="n">FONT_WEIGHT</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;bold&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">FontWeight</span><span class="o">.</span><span class="n">BOLD</span><span class="p">,</span> <span class="c1">#pycairo</span>
+    <span class="s1">&#39;normal&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">FontWeight</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">,</span> <span class="c1">#pycairo</span>
+<span class="p">}</span>
+
+<span class="n">LINE_CAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;square&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">LINE_CAP_SQUARE</span><span class="p">,</span> <span class="c1">#pycairo</span>
+    <span class="s1">&#39;round&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">LINE_CAP_ROUND</span><span class="p">,</span>   <span class="c1">#pycairo</span>
+    <span class="s1">&#39;butt&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">LINE_CAP_BUTT</span><span class="p">,</span>     <span class="c1">#pycairo</span>
+<span class="p">}</span>
+
+<span class="n">LINE_JOIN</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;miter&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">LINE_JOIN_MITER</span><span class="p">,</span> <span class="c1">#pycairo</span>
+    <span class="s1">&#39;round&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">LINE_JOIN_ROUND</span><span class="p">,</span>   <span class="c1">#pycairo</span>
+    <span class="s1">&#39;bevel&#39;</span><span class="p">:</span> <span class="n">cairo</span><span class="o">.</span><span class="n">LINE_JOIN_BEVEL</span><span class="p">,</span>     <span class="c1">#pycairo</span>
+<span class="p">}</span>
+
+<span class="c1">#色</span>
+<span class="n">fancy</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lightskyblue&#39;</span><span class="p">,</span> <span class="s1">&#39;lightgreen&#39;</span><span class="p">,</span> <span class="s1">&#39;lightgrey&#39;</span><span class="p">]</span>
+<span class="n">solid</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="s1">&#39;lightcoral&#39;</span><span class="p">,</span> <span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="s1">&#39;darkorchid&#39;</span><span class="p">,</span> <span class="s1">&#39;royalblue&#39;</span><span class="p">,</span> <span class="p">]</span>
+
+<span class="n">MYCOL</span><span class="o">=</span><span class="p">{</span>
+    <span class="c1">## pure </span>
+    <span class="s1">&#39;red&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;blue&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+    <span class="s1">&#39;lightgreen&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="c1">## basic</span>
+    <span class="s1">&#39;yellow&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;magenta&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+    <span class="s1">&#39;cyan&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+    <span class="c1">## dark </span>
+    <span class="s1">&#39;darkgreen&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;darkred&#39;</span><span class="p">:(</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;darkblue&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">),</span>
+    <span class="c1">## alias</span>
+    <span class="s1">&#39;green&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;brown&#39;</span><span class="p">:(</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+    <span class="s1">&#39;navy&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">),</span>
+    <span class="s1">&#39;orange&#39;</span><span class="p">:(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.0</span> <span class="o">+</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+    <span class="c1">## bw</span>
+    <span class="s1">&#39;black&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> 
+    <span class="s1">&#39;grey0&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> 
+    <span class="s1">&#39;grey10&#39;</span><span class="p">:(</span><span class="mf">0.10</span><span class="p">,</span><span class="mf">0.10</span><span class="p">,</span><span class="mf">0.10</span><span class="p">),</span> 
+    <span class="s1">&#39;grey25&#39;</span><span class="p">:(</span><span class="mf">0.25</span><span class="p">,</span><span class="mf">0.25</span><span class="p">,</span><span class="mf">0.25</span><span class="p">),</span> 
+    <span class="s1">&#39;grey50&#39;</span><span class="p">:(</span><span class="mf">0.50</span><span class="p">,</span><span class="mf">0.50</span><span class="p">,</span><span class="mf">0.50</span><span class="p">),</span> 
+    <span class="s1">&#39;grey75&#39;</span><span class="p">:(</span><span class="mf">0.75</span><span class="p">,</span><span class="mf">0.75</span><span class="p">,</span><span class="mf">0.75</span><span class="p">),</span> 
+    <span class="s1">&#39;grey100&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> 
+    <span class="s1">&#39;white&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="n">DARKCOL</span><span class="o">=</span><span class="p">{</span>
+        <span class="c1">## pure </span>
+        <span class="s1">&#39;red&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+        <span class="s1">&#39;blue&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+        <span class="c1">## basic</span>
+        <span class="c1"># &#39;magenta&#39;:(1,0,1),</span>
+        <span class="c1">## dark </span>
+        <span class="s1">&#39;darkgreen&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+        <span class="s1">&#39;darkred&#39;</span><span class="p">:(</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span>
+        <span class="s1">&#39;darkblue&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mf">0.5</span><span class="p">),</span>
+        <span class="s1">&#39;orange&#39;</span><span class="p">:(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.0</span> <span class="o">+</span> <span class="mf">0.125</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="c1">## bw</span>
+        <span class="s1">&#39;black&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> 
+        <span class="s1">&#39;grey0&#39;</span><span class="p">:(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> 
+        <span class="s1">&#39;grey10&#39;</span><span class="p">:(</span><span class="mf">0.10</span><span class="p">,</span><span class="mf">0.10</span><span class="p">,</span><span class="mf">0.10</span><span class="p">),</span> 
+        <span class="s1">&#39;grey25&#39;</span><span class="p">:(</span><span class="mf">0.25</span><span class="p">,</span><span class="mf">0.25</span><span class="p">,</span><span class="mf">0.25</span><span class="p">),</span> 
+        <span class="s1">&#39;grey50&#39;</span><span class="p">:(</span><span class="mf">0.50</span><span class="p">,</span><span class="mf">0.50</span><span class="p">,</span><span class="mf">0.50</span><span class="p">),</span> 
+        <span class="s1">&#39;grey75&#39;</span><span class="p">:(</span><span class="mf">0.75</span><span class="p">,</span><span class="mf">0.75</span><span class="p">,</span><span class="mf">0.75</span><span class="p">),</span> 
+        <span class="s1">&#39;grey100&#39;</span><span class="p">:(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> 
+<span class="p">}</span>
+
+<span class="n">DEFAULT_HEAD_SHAPE</span> <span class="o">=</span> <span class="s1">&#39;sharp&#39;</span>
+
+<span class="c1">## 位置合わせ</span>
+<span class="n">ALIGN_X</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;left&#39;</span>   <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> 
+    <span class="s1">&#39;center&#39;</span>  <span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> 
+    <span class="s1">&#39;right&#39;</span>  <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="c1">## uni</span>
+    <span class="s1">&#39;beg&#39;</span> <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> 
+    <span class="s1">&#39;mid&#39;</span> <span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> 
+    <span class="s1">&#39;end&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> 
+<span class="p">}</span>
+<span class="n">ALIGN_Y</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;top&#39;</span>    <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> 
+    <span class="s1">&#39;middle&#39;</span> <span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> 
+    <span class="s1">&#39;bottom&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> 
+    <span class="c1">## uni</span>
+    <span class="s1">&#39;beg&#39;</span> <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> 
+    <span class="s1">&#39;mid&#39;</span> <span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> 
+    <span class="s1">&#39;end&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> 
+    <span class="c1">## alt</span>
+    <span class="s1">&#39;bot&#39;</span> <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> 
+    <span class="c1">## alt</span>
+    <span class="s1">&#39;above&#39;</span>  <span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> 
+    <span class="s1">&#39;below&#39;</span>  <span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> 
+<span class="p">}</span>
+<span class="n">DEFAULT_ALIGN_RATIO_X</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">DEFAULT_ALIGN_RATIO_Y</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<span class="c1">#==========</span>
+<span class="c1">#Cairo.context</span>
+<span class="c1">#==========</span>
+
+<span class="c1"># class ImageBoard(log.Loggable):</span>
+<div class="viewcode-block" id="ImageBoard"><a class="viewcode-back" href="../../board.html#board.crtool.ImageBoard">[ドキュメント]</a><span class="k">class</span> <span class="nc">ImageBoard</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Cairoの文脈(context)の生成と出力を実装するクラス．</span>
+
+<span class="sd">    * 本オブジェクトの生成時に，オプション引数を与えると，Cairo.contextを生成し，保持する．</span>
+<span class="sd">    </span>
+<span class="sd">    Args: </span>
+<span class="sd">         imgtype (str) : 画像フォーマット (cairo)</span>
+
+<span class="sd">         format (str) : 出力ファイルの描画フォーマット (cairo) in &quot;pdf&quot;, &quot;png&quot;</span>
+
+<span class="sd">         display_size (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`</span>
+
+<span class="sd">         outfile (str) : 出力画像ファイル名の本体を表す文字列．例：`out`</span>
+
+<span class="sd">         verbose (bool) : デバッグ/実行情報の表示のフラグ</span>
+
+<span class="sd">    Attributes: </span>
+
+<span class="sd">         ims (cairo.ImageSurface, cairo.PDFSurface) : Cairoの画像オブジェクト（Surface）を保持する．</span>
+
+<span class="sd">         cr (cairo.Context) : Cairoの文脈オブジェクト．関数`context()`で取得し，各種のCairoの描画操作，または，crtoolの描画操作を適用できる．</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1">#count instance id </span>
+    
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="c1"># dep_init=None, </span>
+                 <span class="n">imgtype</span><span class="o">=</span><span class="n">cairo</span><span class="o">.</span><span class="n">FORMAT_ARGB32</span><span class="p">,</span> <span class="c1">#cairoのSurface format</span>
+                 <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;pdf&quot;</span><span class="p">,</span>   <span class="c1">#出力ファイルフォーマット（拡張子 pdf, png）</span>
+                 <span class="n">outfile</span><span class="o">=</span><span class="s2">&quot;out&quot;</span><span class="p">,</span>  <span class="c1">#出力ファイル名（拡張子を除く）</span>
+                 <span class="n">display_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                 <span class="c1"># imagesize=&#39;XGA&#39;,#初期の画像サイズ</span>
+                 <span class="c1"># portrait=False, #画像サイズが縦長か？</span>
+                 <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;実装レイヤーの画盤を生成するコンストラクタ．</span>
+<span class="sd">        Args: </span>
+<span class="sd">             imgtype (str) : 画像フォーマット (cairo)</span>
+
+<span class="sd">             format (str) : 出力ファイルの描画フォーマット (cairo) in &quot;pdf&quot;, &quot;png&quot;</span>
+
+<span class="sd">             display_size (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`</span>
+
+<span class="sd">             verbose (bool) : 実行情報を表示する</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">#親Loggableの初期化</span>
+        <span class="c1"># super().__init__(dep_init=dep_init, verbose=verbose)</span>
+        <span class="c1"># super().__init__(dep_init=dep_init, verbose=verbose)</span>
+        <span class="c1">#パラメータ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">imgtype</span> <span class="o">=</span> <span class="n">imgtype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">format</span>  <span class="o">=</span> <span class="nb">format</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outfile</span> <span class="o">=</span> <span class="n">outfile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_size</span> <span class="o">=</span> <span class="n">display_size</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;ImageBoard.__init__(): </span><span class="si">{</span> <span class="n">kw</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="c1">#==========</span>
+        <span class="c1">#準備</span>
+        <span class="c1">#==========</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;option: format=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            
+        <span class="c1">## 出力ファイルフォーマット</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="o">==</span><span class="s2">&quot;png&quot;</span><span class="p">:</span> 
+            <span class="n">OFILE_EXT</span> <span class="o">=</span> <span class="s2">&quot;png&quot;</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="o">==</span><span class="s2">&quot;pdf&quot;</span><span class="p">:</span> 
+            <span class="n">OFILE_EXT</span> <span class="o">=</span> <span class="s2">&quot;pdf&quot;</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;the file format=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="si">}</span><span class="s1"> is not supported; instead use the default format=</span><span class="si">{</span> <span class="s2">&quot;pdf&quot;</span>  <span class="si">}</span><span class="s1">: &#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="o">=</span> <span class="n">OFILE_EXT</span> <span class="o">=</span> <span class="s2">&quot;pdf&quot;</span> <span class="c1">#default</span>
+            
+        <span class="c1">## 出力ファイル名</span>
+        <span class="k">if</span> <span class="n">outfile</span><span class="p">:</span>
+            <span class="n">mybody</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outfile</span> <span class="c1">#本体名</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mybody</span> <span class="o">=</span> <span class="s2">&quot;out&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">myoutfile</span> <span class="o">=</span> <span class="n">mybody</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">OFILE_EXT</span> <span class="c1">#ファイル名</span>
+
+        <span class="c1">##画像サイズ</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">com</span><span class="o">.</span><span class="n">is_sequence_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">display_size</span><span class="p">,</span> <span class="n">elemtype</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)),</span>
+                   <span class="sa">f</span><span class="s1">&#39;display_size must be a pair of numbers: </span><span class="si">{</span><span class="n">display_size</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        
+        <span class="c1">## Cairoのサーフェースの生成</span>
+        <span class="sd">&quot;&quot;&quot; class cairo.ImageSurface(format, width, height)</span>
+<span class="sd">        Parameters:	</span>
+<span class="sd">          format – FORMAT of pixels in the surface to create</span>
+<span class="sd">          width – width of the surface, in pixels</span>
+<span class="sd">          height – height of the surface, in pixels</span>
+<span class="sd">        Returns:	</span>
+<span class="sd">          a new ImageSurface</span>
+<span class="sd">        Raises :	</span>
+<span class="sd">          MemoryError in case of no memory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="o">==</span> <span class="s2">&quot;png&quot;</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">ims</span> <span class="o">=</span> <span class="n">cairo</span><span class="o">.</span><span class="n">ImageSurface</span><span class="p">(</span><span class="n">cairo</span><span class="o">.</span><span class="n">FORMAT_ARGB32</span><span class="p">,</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">display_size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                          <span class="bp">self</span><span class="o">.</span><span class="n">display_size</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="c1">#image surface</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="o">==</span> <span class="s2">&quot;pdf&quot;</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">ims</span> <span class="o">=</span> <span class="n">cairo</span><span class="o">.</span><span class="n">PDFSurface</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">myoutfile</span><span class="p">,</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">display_size</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">display_size</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="c1">#image surface</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;no such a file format=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="si">}</span><span class="s1"> is supported!&#39;</span><span class="p">)</span>
+
+        <span class="c1">## CairoのContext (image handle)の生成</span>
+        <span class="sd">&quot;&quot;&quot; class cairo.Context(target)</span>
+<span class="sd">        Parameters:	target – target Surface for the context</span>
+<span class="sd">        Returns:	a newly allocated Context</span>
+<span class="sd">        Raises :	MemoryError in case of no memory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cr</span> <span class="o">=</span> <span class="n">cairo</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ims</span><span class="p">)</span> 
+        <span class="k">return</span> 
+                
+<div class="viewcode-block" id="ImageBoard.context"><a class="viewcode-back" href="../../board.html#board.crtool.ImageBoard.context">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">context</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;描画ハンドル`self.cr`を返す．</span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">          (cairo.Context) : Cairoの描画contextオブジェクト </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cr</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="s1">&#39;画像オブジェクトself.cr==None!&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cr</span> </div>
+
+    <span class="c1">#============</span>
+    <span class="c1">#表示</span>
+    <span class="c1">#============</span>
+    <span class="c1"># def show(self, noshow=False, verbose=False, depth=0):</span>
+<div class="viewcode-block" id="ImageBoard.show"><a class="viewcode-back" href="../../board.html#board.crtool.ImageBoard.show">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">noshow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;画像を，出力ファイルに書き出す．出力ファイル書式は`format`で，出力ファイル名（本体）文字列は`outfile`で，ImageBoardオブジェクトの生成時に指定する．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">noshow</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;ImageBoard.show()@@: @Warning: skipping show() for pil.Image object due to flag noshow=</span><span class="si">{</span> <span class="n">noshow</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">return</span> 
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;ImageBoard.show()...&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@printing an image to &quot;</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">myoutfile</span> <span class="si">}</span><span class="s1">&quot;...&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="o">==</span><span class="s2">&quot;png&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ims</span><span class="o">.</span><span class="n">write_to_png</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">myoutfile</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="o">==</span><span class="s2">&quot;pdf&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cr</span><span class="o">.</span><span class="n">show_page</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;the file format=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span> <span class="si">}</span><span class="s1"> is not supported!&#39;</span><span class="p">)</span>
+        
+        <span class="k">return</span> </div>
+    <span class="k">pass</span> <span class="c1">##end: class Image</span></div>
+
+<span class="c1">#=====</span>
+<span class="c1">#便利関数</span>
+<span class="c1">#=====</span>
+
+<div class="viewcode-block" id="cr_add_alpha"><a class="viewcode-back" href="../../board.html#board.crtool.cr_add_alpha">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_add_alpha</span><span class="p">(</span><span class="n">rgb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;色指定の三つ組rgbにalpha in [0.0,1.0]を追加する</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         rgb (tuple(float, float, float)) : 色を表す3つ組 $(r,g,b) \in [0,1]^3$. </span>
+
+<span class="sd">         alpha (float) : アルファ値を表す実数 in $\alpha \in [0,1]$. </span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         rgb (tuple(float, float, float)) : アルファ値つきの色を表す4つ組 $(r,g,b, a) \in [0,1]^4$. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">rgb</span><span class="o">!=</span><span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;rgb=</span><span class="si">{</span><span class="n">rgb</span><span class="si">}</span><span class="s1"> must of length 3&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rgb</span><span class="p">)</span><span class="o">==</span><span class="mi">3</span><span class="p">:</span> 
+        <span class="k">return</span> <span class="p">(</span><span class="n">rgb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">alpha</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">rgb</span><span class="p">)</span><span class="o">==</span><span class="mi">4</span><span class="p">:</span> 
+        <span class="k">return</span> <span class="p">(</span><span class="n">rgb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;rgb=</span><span class="si">{</span><span class="n">rgb</span><span class="si">}</span><span class="s1"> must of length 3 or 4&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="cr_set_source_rgb"><a class="viewcode-back" href="../../board.html#board.crtool.cr_set_source_rgb">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_set_source_rgb</span><span class="p">(</span><span class="n">source_rgb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;contextに色source_rgbを設定する．</span>
+<span class="sd">    source_rgbはアルファなし(r,g,b)とアルファあり(r,g,b,a)の両方を受け付ける．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">source_rgb</span><span class="p">:</span> 
+        <span class="n">rgb</span> <span class="o">=</span> <span class="n">source_rgb</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rgb</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">)</span> <span class="c1">#grey50</span>
+    <span class="k">if</span> <span class="n">rgb</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rgb</span><span class="p">)</span><span class="o">==</span><span class="mi">3</span><span class="p">:</span> 
+            <span class="n">context</span><span class="o">.</span><span class="n">set_source_rgb</span><span class="p">(</span><span class="n">rgb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">rgb</span><span class="p">)</span><span class="o">==</span><span class="mi">4</span><span class="p">:</span> 
+            <span class="n">context</span><span class="o">.</span><span class="n">set_source_rgba</span><span class="p">(</span><span class="n">rgb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">rgb</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;source_rgb must be (r,g,b) or (r,g,b,a)!: </span><span class="si">{</span><span class="n">rgb</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span></div>
+
+<div class="viewcode-block" id="lookup_dict"><a class="viewcode-back" href="../../board.html#board.crtool.lookup_dict">[ドキュメント]</a><span class="k">def</span> <span class="nf">lookup_dict</span><span class="p">(</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;与えられた辞書を，文字列キーで検索して，値を返す．</span>
+<span class="sd">    ただし，辞書のキーは小文字化されていることを仮定する．</span>
+<span class="sd">    このとき，次の点でpython組み込みの辞書と異なる．</span>
+
+<span class="sd">    * キー文字列は大文字小文字を区別しないこと. </span>
+<span class="sd">    * キーが登録されていなければ引数defaultの値を返すこと．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         dict (dict) : python組み込みの辞書．キーが小文字のみであること．</span>
+
+<span class="sd">         key (str) : キー文字列．大文字小文字の別は無視される．</span>
+
+<span class="sd">         default (ANy) : デフォールト値．</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (Any) : キーに対応する値．ただし，値が見つからない時は，default値が返される．</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">[</span><span class="n">key</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span></div>
+
+<div class="viewcode-block" id="cr_set_font_face"><a class="viewcode-back" href="../../board.html#board.crtool.cr_set_font_face">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_set_font_face</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;cairo.ContextにFont Faceを設定する．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+
+<span class="sd">         fontfamily (str) : Cairoのフォントファミリー指定．代替キーfont_family, ffamily</span>
+
+<span class="sd">         fontslant  (str) : Cairoの斜体指定．値は`(&#39;italic&#39;, &#39;normal&#39;, &#39;oblique&#39;)`をとる．詳しくは，辞書`crtool.FONT_SLANT`を参照のこと．代替キーfont_slant, fslant．</span>
+
+<span class="sd">         fontweight (str) : Cairoの太字指定．値は，`(&#39;normal&#39;, &#39;bold&#39;)`をとる．詳しくは，辞書`crtool.FONT_WEIGHT`を参照のこと．代替キーfont_weight, fweight．</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">### fontfamily    </span>
+    <span class="n">ffamily</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;fontfamily&#39;</span><span class="p">,</span>
+                     <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;font_family&#39;</span><span class="p">,</span> <span class="s1">&#39;ffamily&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="c1">## ffamily must be at least specified</span>
+    <span class="k">if</span> <span class="n">ffamily</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span> 
+        <span class="k">return</span>
+    
+    <span class="c1">### fontslant</span>
+    <span class="n">fslant_</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;fontslant&#39;</span><span class="p">,</span>
+                    <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;font_slant&#39;</span><span class="p">,</span> <span class="s1">&#39;fslant&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">fslant</span> <span class="o">=</span> <span class="n">lookup_dict</span><span class="p">(</span><span class="n">FONT_SLANT</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">fslant_</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">cairo</span><span class="o">.</span><span class="n">FontSlant</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span>
+
+    <span class="c1">### fontweight</span>
+    <span class="n">fweight_</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;fontweight&#39;</span><span class="p">,</span>
+                     <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;font_weight&#39;</span><span class="p">,</span> <span class="s1">&#39;fweight&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">fweight</span> <span class="o">=</span> <span class="n">lookup_dict</span><span class="p">(</span><span class="n">FONT_WEIGHT</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">fweight_</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">cairo</span><span class="o">.</span><span class="n">FontWeight</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span>
+
+    <span class="c1">### select a fontface </span>
+    <span class="n">context</span><span class="o">.</span><span class="n">select_font_face</span><span class="p">(</span><span class="n">ffamily</span><span class="p">,</span> <span class="n">fslant</span><span class="p">,</span> <span class="n">fweight</span><span class="p">)</span>
+    <span class="k">return</span> </div>
+            
+<div class="viewcode-block" id="cr_set_context_parameters"><a class="viewcode-back" href="../../board.html#board.crtool.cr_set_context_parameters">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;cairo.Contextに各種パラメータを設定するラッパー関数．各種の代替キーを提供する．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+
+<span class="sd">         source_rgb (tuple(float, float, float)) : Cairoの色指定の数の三つ組．代替キー&#39;rgb&#39;</span>
+
+<span class="sd">         linewidth (float) : 線幅．代替キー&#39;line_width&#39;, &#39;pen_width&#39;</span>
+
+<span class="sd">         linecap (str) : 線端の形状．代替キー&#39;line_cap&#39;, &#39;line_end&#39;</span>
+
+<span class="sd">         fontsize (float) : フォントサイズ．代替キー&#39;font_size&#39;, &#39;fsize&#39;. </span>
+
+<span class="sd">         fontfamily (str) : フォントファミリー指定．代替キーfont_family, ffamily．</span>
+
+<span class="sd">         fontslant  (str) : フォントの斜体指定．代替キーfont_slant, fslant．値は`(&#39;italic&#39;, &#39;normal&#39;, &#39;oblique&#39;)`をとる．詳しくは，関数`cr_font_face`を参照のこと．</span>
+
+<span class="sd">         fontweight (str) : フォントの太字指定．代替キーfont_weight, fweight．値は，`(&#39;normal&#39;, &#39;bold&#39;)`をとる．詳しくは，関数`cr_font_face`を参照のこと．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">context</span><span class="o">!=</span><span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;context must be non-None!&#39;</span><span class="p">)</span>
+    <span class="c1">#===== 共通</span>
+    <span class="c1">## 色設定</span>
+    <span class="n">source_rgb</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;source_rgb&#39;</span><span class="p">,</span> <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rgb&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">source_rgb</span><span class="p">:</span>
+        <span class="n">cr_set_source_rgb</span><span class="p">(</span><span class="n">source_rgb</span><span class="o">=</span><span class="n">source_rgb</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+    <span class="c1">#===== 図形</span>
+    <span class="c1">## 線幅</span>
+    <span class="n">linewidth</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;linewidth&#39;</span><span class="p">,</span>
+                       <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;line_width&#39;</span><span class="p">,</span> <span class="s1">&#39;pen_width&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">linewidth</span><span class="p">:</span> 
+        <span class="n">context</span><span class="o">.</span><span class="n">set_line_width</span><span class="p">(</span><span class="n">linewidth</span><span class="p">)</span>
+
+    <span class="c1">## 線端 linecap</span>
+    <span class="n">linecap_</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;linecap&#39;</span><span class="p">,</span> <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;line_cap&#39;</span><span class="p">,</span> <span class="s1">&#39;line_end&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">linecap_</span><span class="p">:</span> 
+        <span class="n">linecap</span> <span class="o">=</span> <span class="n">lookup_dict</span><span class="p">(</span><span class="n">LINE_CAP</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">linecap_</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">cairo</span><span class="o">.</span><span class="n">LINE_CAP_SQUARE</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">set_line_cap</span><span class="p">(</span><span class="n">linecap</span><span class="p">)</span>
+    
+    <span class="c1">## 線端 linecap</span>
+    <span class="n">linejoin_</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;linejoin&#39;</span><span class="p">,</span> <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;line_join&#39;</span><span class="p">,</span> <span class="s1">&#39;line_end&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">linejoin_</span><span class="p">:</span> 
+        <span class="n">linejoin</span> <span class="o">=</span> <span class="n">lookup_dict</span><span class="p">(</span><span class="n">LINE_JOIN</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">linejoin_</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">cairo</span><span class="o">.</span><span class="n">LINE_JOIN_MITER</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">set_line_join</span><span class="p">(</span><span class="n">linejoin</span><span class="p">)</span>
+    
+    <span class="c1">#===== テキスト</span>
+    <span class="c1">## フォントファミリー</span>
+    <span class="n">cr_set_font_face</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="c1">## フォントサイズ</span>
+    <span class="n">fsize</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;fontsize&#39;</span><span class="p">,</span> <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;font_size&#39;</span><span class="p">,</span> <span class="s1">&#39;fsize&#39;</span><span class="p">],</span>
+                   <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fsize</span><span class="p">:</span> 
+        <span class="n">context</span><span class="o">.</span><span class="n">set_font_size</span><span class="p">(</span><span class="n">fsize</span><span class="p">)</span> <span class="c1">#default: font_size = 10</span>
+    <span class="c1">#===== 終わり</span>
+    <span class="k">return</span> </div>
+
+<div class="viewcode-block" id="cr_process_stroke_or_fill"><a class="viewcode-back" href="../../board.html#board.crtool.cr_process_stroke_or_fill">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_process_stroke_or_fill</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                              <span class="c1">#fill=None, preserve=None</span>
+                              <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;図形描画後の書き出しを行う．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+
+<span class="sd">         cmd (str) :  次の命令の一つ: &#39;stroke&#39;, &#39;fill&#39;, &#39;stroke_preserve&#39;, &#39;fill_preserve&#39;. </span>
+
+<span class="sd">         preserve (bool) : 演算後のパス保持のフラグ．パスを保存するなら`True`, しないなら`False`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fill</span>     <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">)</span>
+    <span class="n">preserve</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="s1">&#39;preserve&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fill</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fill</span><span class="o">==</span><span class="s1">&#39;stroke&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">preserve</span><span class="p">:</span> 
+                <span class="n">context</span><span class="o">.</span><span class="n">stroke_preserve</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">stroke</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">fill</span><span class="o">==</span><span class="s1">&#39;fill&#39;</span><span class="p">:</span> 
+            <span class="k">if</span> <span class="n">preserve</span><span class="p">:</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">fill_preserve</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">fill</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">fill</span><span class="o">==</span><span class="s1">&#39;stroke_preserve&#39;</span><span class="p">:</span> 
+            <span class="n">context</span><span class="o">.</span><span class="n">stroke_preserve</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">fill</span><span class="o">==</span><span class="s1">&#39;fill_preserve&#39;</span><span class="p">:</span> 
+            <span class="n">context</span><span class="o">.</span><span class="n">fill_preserve</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;no such fill command=</span><span class="si">{</span><span class="n">fill</span><span class="si">}</span><span class="s1">!&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">stroke</span><span class="p">()</span>
+    <span class="k">return</span> </div>
+
+<span class="c1">#=====</span>
+<span class="c1">#描画関数</span>
+<span class="c1">#=====</span>
+
+<div class="viewcode-block" id="cr_move_to"><a class="viewcode-back" href="../../board.html#board.crtool.cr_move_to">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_move_to</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;ペンを移動する．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         x, y (float) : x- and y-coordinate of the center</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (Rect) : 包含矩形</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">box</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> 
+    <span class="k">return</span> <span class="n">box</span></div>
+
+<span class="n">ARROWHEAD_LENGTH</span><span class="o">=</span><span class="mi">10</span>
+<span class="n">ARROWHEAD_ANGLE</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">9</span>
+<span class="n">ARROWHEAD_OFFSET_RATIO</span><span class="o">=</span><span class="mf">0.3</span>
+<span class="n">ARROWHEAD_SUPRESS_OVERHEAD_RATIO</span><span class="o">=</span><span class="mf">0.95</span>
+
+<div class="viewcode-block" id="cr_arrow_head"><a class="viewcode-back" href="../../board.html#board.crtool.cr_arrow_head">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_arrow_head</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">head_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">head_length</span><span class="o">=</span><span class="n">ARROWHEAD_LENGTH</span><span class="p">,</span>
+                  <span class="n">head_angle</span><span class="o">=</span><span class="n">ARROWHEAD_ANGLE</span><span class="p">,</span>
+                  <span class="n">head_offset_ratio</span><span class="o">=</span><span class="n">ARROWHEAD_OFFSET_RATIO</span><span class="p">,</span>
+                  <span class="n">to_surpress_short_head</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;ペンを移動する．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         x (float) : x-coordinate of the center</span>
+
+<span class="sd">         y (float) : y-coordinate of the center</span>
+
+<span class="sd">         x_last (float) : 矢印をもつ場合に，前の点の座標を与える．矢印の向きを決める．</span>
+
+<span class="sd">         y_last (float) : 矢印をもつ場合に，前の点の座標を与える．矢印の向きを決める．</span>
+
+<span class="sd">         context (cairo.Context) : 文脈オブジェクト．必須．</span>
+
+<span class="sd">         head_shape (str)    : 矢印頭の形状. 省略時は，`DEFAULT_HEAD_SHAPE=&#39;sharp&#39;`. </span>
+
+<span class="sd">         head_length (float) : デフォールトARROWHEAD_LENGTH</span>
+
+<span class="sd">         head_angle (float)  : デフォールトARROWHEAD_ANGLE</span>
+
+<span class="sd">         head_offset_ratio (float) : デフォールトARROWHEAD_OFFSET_RATIO</span>
+
+<span class="sd">         to_surpress_short_head (bool) : 矢印頭と同程度以下の長さの線分に対して矢印頭の描画を省略する．デフォールトTrue</span>
+<span class="sd">    </span>
+<span class="sd">    Note: </span>
+
+<span class="sd">      矢印頭の形状 `head_shape (str)` は次のいずれかの値をとる. </span>
+
+<span class="sd">	- stroke   : 2辺の輪郭線によるV字型の矢印頭</span>
+<span class="sd">	- triangle : 塗りつぶした二等辺三角形の矢印頭</span>
+<span class="sd">	- sharp    : 塗りつぶした尖った鏃型の矢印頭．`triangle`の根本が凹んだ形．</span>
+
+<span class="sd">      関数`line_to`による線分`(x_last, y_last), (x, y)`の描画時に呼びだされる．</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="c1">## the definitions for innner functions </span>
+    <span class="k">def</span> <span class="nf">compute_angle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span> 
+        <span class="sd">&quot;&quot;&quot;The line from x_last, y_last to (x,y)の方向</span>
+<span class="sd">           line_angle = (cos_angle, sin_angle)を計算する</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x_len</span><span class="p">,</span> <span class="n">y_len</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="n">y_last</span>
+        <span class="n">line_len</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x_len</span><span class="o">*</span><span class="n">x_len</span> <span class="o">+</span> <span class="n">y_len</span><span class="o">*</span><span class="n">y_len</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">line_len</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;line_len=</span><span class="si">{</span><span class="n">line_len</span><span class="si">}</span><span class="s1"> &gt; 0 must hold!&#39;</span><span class="p">)</span>
+        <span class="n">cos_angle</span><span class="p">,</span> <span class="n">sin_angle</span> <span class="o">=</span> <span class="n">x_len</span><span class="o">/</span><span class="n">line_len</span><span class="p">,</span> <span class="n">y_len</span><span class="o">/</span><span class="n">line_len</span>  <span class="c1">## cos(angle), sin(angle)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="n">len_unit</span> <span class="o">=</span> <span class="p">(</span><span class="n">cos_angle</span><span class="o">*</span><span class="n">cos_angle</span> <span class="o">+</span> <span class="n">sin_angle</span><span class="o">*</span><span class="n">sin_angle</span><span class="p">)</span> <span class="c1">#for debug</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@debug: cr_line_to: </span><span class="si">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">line_len</span> <span class="si">}</span><span class="s1"> =&gt; </span><span class="si">{</span> <span class="n">cos_angle</span><span class="p">,</span> <span class="n">sin_angle</span><span class="p">,</span> <span class="n">len_unit</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cos_angle</span><span class="p">,</span> <span class="n">sin_angle</span><span class="p">,</span> <span class="n">line_len</span>
+
+    <span class="k">def</span> <span class="nf">sub_arrow_stroke</span><span class="p">(</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;折れ線で輪郭を書いた矢印頭&quot;&quot;&quot;</span>
+        <span class="c1">#arrowhead</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span> <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">);</span>  
+        <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span> <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span><span class="p">,</span> <span class="o">-</span><span class="n">y_head</span><span class="p">);</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">stroke</span><span class="p">()</span>
+        <span class="k">return</span> 
+
+    <span class="k">def</span> <span class="nf">sub_arrow_filled_triangle</span><span class="p">(</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">):</span> 
+        <span class="sd">&quot;&quot;&quot;塗りつぶした2等辺三角形の矢印頭&quot;&quot;&quot;</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">);</span>  <span class="c1">#arrowhead</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span><span class="p">,</span> <span class="o">-</span><span class="n">y_head</span><span class="p">);</span> <span class="c1">#arrowhead</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">fill</span><span class="p">()</span>
+        <span class="k">return</span> 
+
+    <span class="k">def</span> <span class="nf">sub_arrow_filled_sharp</span><span class="p">(</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">):</span> 
+        <span class="sd">&quot;&quot;&quot;塗りつぶした尖った2等辺4辺形の矢印頭&quot;&quot;&quot;</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">);</span>  <span class="c1">#arrowhead</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span> <span class="o">+</span> <span class="p">(</span><span class="n">head_length</span><span class="o">*</span><span class="n">head_offset_ratio</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">);</span>  <span class="c1">#arrowhead</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="o">-</span><span class="n">x_head</span><span class="p">,</span> <span class="o">-</span><span class="n">y_head</span><span class="p">);</span> <span class="c1">#arrowhead</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">fill</span><span class="p">()</span>
+        <span class="k">return</span> 
+
+    <span class="c1">## 矢印処理</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">com</span><span class="o">.</span><span class="n">is_sequence_type</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span><span class="p">),</span> <span class="n">elemtype</span><span class="o">=</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)),</span>
+               <span class="sa">f</span><span class="s1">&#39;crtool.cr_arrow_head: x, y, x_last, y_last&#39;</span><span class="o">+</span>
+               <span class="sa">f</span><span class="s1">&#39;=</span><span class="si">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span> <span class="si">}</span><span class="s1"> must be float or int!&#39;</span><span class="p">)</span>
+    <span class="c1">#lineの方向line_angleを計算する</span>
+    <span class="k">if</span> <span class="kc">False</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@debug: cr_arrow_head: kwargs=</span><span class="si">{</span> <span class="n">kwargs</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">cos_angle</span><span class="p">,</span> <span class="n">sin_angle</span><span class="p">,</span> <span class="n">line_len</span> <span class="o">=</span> <span class="n">compute_angle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span><span class="p">)</span>
+    
+    <span class="n">context</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="c1">## tranlate</span>
+    <span class="n">trans_trans</span> <span class="o">=</span> <span class="n">cairo</span><span class="o">.</span><span class="n">Matrix</span><span class="p">();</span> <span class="n">trans_trans</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> 
+    <span class="n">context</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">trans_trans</span><span class="p">)</span> <span class="c1">#apply a transform</span>
+    
+    <span class="c1">## rotate </span>
+    <span class="n">trans_rotate</span> <span class="o">=</span> <span class="n">cairo</span><span class="o">.</span><span class="n">Matrix</span><span class="p">(</span><span class="n">xx</span><span class="o">=</span><span class="n">cos_angle</span><span class="p">,</span> <span class="n">yx</span><span class="o">=</span><span class="n">sin_angle</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span><span class="o">*</span><span class="n">sin_angle</span><span class="p">,</span> <span class="n">yy</span><span class="o">=</span><span class="n">cos_angle</span><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y0</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">trans_rotate</span><span class="p">)</span> <span class="c1">#apply a transform</span>
+    
+    <span class="c1">## draw lines</span>
+    <span class="n">x_head</span> <span class="o">=</span> <span class="n">head_length</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">ARROWHEAD_ANGLE</span><span class="p">)</span>
+    <span class="n">y_head</span> <span class="o">=</span> <span class="n">head_length</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">ARROWHEAD_ANGLE</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">to_surpress_short_head</span> <span class="ow">and</span> <span class="n">line_len</span> <span class="o">&lt;</span> <span class="n">head_length</span><span class="o">*</span><span class="n">ARROWHEAD_SUPRESS_OVERHEAD_RATIO</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">head_shape</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span> 
+            <span class="n">head_shape</span> <span class="o">=</span> <span class="n">DEFAULT_HEAD_SHAPE</span> <span class="c1">## default</span>
+
+        <span class="k">if</span> <span class="n">head_shape</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;stroke&#39;</span><span class="p">):</span> 
+            <span class="n">arrow_func</span> <span class="o">=</span> <span class="n">sub_arrow_stroke</span>
+        <span class="k">elif</span> <span class="n">head_shape</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;triangle&#39;</span><span class="p">,</span> <span class="s1">&#39;filled_triangle&#39;</span><span class="p">):</span> 
+            <span class="n">arrow_func</span> <span class="o">=</span> <span class="n">sub_arrow_filled_triangle</span>
+        <span class="k">elif</span> <span class="n">head_shape</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;sharp&#39;</span><span class="p">,</span> <span class="s1">&#39;filled_sharp&#39;</span><span class="p">):</span> 
+            <span class="n">arrow_func</span> <span class="o">=</span> <span class="n">sub_arrow_filled_sharp</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;crtool.cr_arrow_head: no such a head_shape=&quot;</span><span class="si">{</span> <span class="n">head_shape</span> <span class="si">}</span><span class="s1">&quot;!: it must be one of: stroke, triangle (filled_triangle), ...&#39;</span><span class="p">)</span>
+        <span class="n">arrow_func</span><span class="p">(</span><span class="n">x_head</span><span class="p">,</span> <span class="n">y_head</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">close_path</span><span class="p">()</span>
+        <span class="k">pass</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span>
+    <span class="k">return</span></div>
+
+<span class="n">EMPTY_DICT</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="cr_line_to"><a class="viewcode-back" href="../../board.html#board.crtool.cr_line_to">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_line_to</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">has_arrow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">x_last</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y_last</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="c1">#optional for arrow</span>
+               <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;ペンを移動する．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         x (float) : x-coordinate of the center</span>
+
+<span class="sd">         y (float) : y-coordinate of the center</span>
+
+<span class="sd">         context (cairo.Context) : 文脈オブジェクト</span>
+
+<span class="sd">         has_arrow (bool) : 線分端に矢印をもつか? </span>
+
+<span class="sd">         x_last (float) : 矢印をもつ場合に，前の点の座標を与える．矢印の向きを決める．省略可能．</span>
+
+<span class="sd">         y_last (float) : 矢印をもつ場合に，前の点の座標を与える．矢印の向きを決める．省略可能．</span>
+
+<span class="sd">         arrow_head (str) : 矢印の形状. 値は，関数`crtool.cr_arrow_head`を参照のこと．</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (Rect) : 包含矩形</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">stroke</span><span class="p">()</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;arrow_head&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">EMPTY_DICT</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">has_arrow</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">x_last</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">y_last</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cr_arrow_head</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x_last</span><span class="p">,</span> <span class="n">y_last</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+                          <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">pass</span> 
+    <span class="n">box</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> 
+    <span class="k">return</span> <span class="n">box</span></div>
+
+<div class="viewcode-block" id="cr_rectangle"><a class="viewcode-back" href="../../board.html#board.crtool.cr_rectangle">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_rectangle</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  
+                 <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                 <span class="n">fill</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">edge_rgb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;矩形を描く</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         x (float) : x-coordinate of the center</span>
+
+<span class="sd">         y (float) : y-coordinate of the center</span>
+
+<span class="sd">         width (float) : width</span>
+
+<span class="sd">         height (float): height </span>
+
+<span class="sd">         fill (bool) : fill if `True` or stroke if `False` (default)</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (Rect) : 包含矩形</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">## 文脈パラメータ設定</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">com</span><span class="o">.</span><span class="n">is_sequence_type</span><span class="p">((</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">),</span> <span class="n">elemtype</span><span class="o">=</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)),</span>
+               <span class="sa">f</span><span class="s1">&#39;(x,y,width, height)=</span><span class="si">{</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span><span class="si">}</span><span class="s1"> must be numbers!&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">edge_rgb</span><span class="p">:</span>
+        <span class="c1">#fill and edge</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">rectangle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">fill_preserve</span><span class="p">()</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+        <span class="n">cr_set_source_rgb</span><span class="p">(</span><span class="n">source_rgb</span><span class="o">=</span><span class="n">edge_rgb</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">stroke</span><span class="p">()</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1">#fill only</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">rectangle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span>
+        <span class="n">cr_process_stroke_or_fill</span><span class="p">(</span><span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+    <span class="n">box</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="n">width</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">height</span><span class="p">)</span> 
+    <span class="k">return</span> <span class="n">box</span></div>
+
+<div class="viewcode-block" id="cr_arc"><a class="viewcode-back" href="../../board.html#board.crtool.cr_arc">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_arc</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+           <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;円盤を描く．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         x (float) : x-coordinate of the center</span>
+
+<span class="sd">         y (float) : y-coordinate of the center</span>
+
+<span class="sd">         r (float) : radius </span>
+
+<span class="sd">         start, end (float) : the starting and ending angle in radian</span>
+
+<span class="sd">         fill (bool) : fill (True) or stroke (False, default)</span>
+
+<span class="sd">    Returns: </span>
+
+<span class="sd">         (Rect) : 包含矩形</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">## 文脈パラメータ設定</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+                              <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">arc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+    <span class="n">fill</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">)</span>
+    <span class="n">cr_process_stroke_or_fill</span><span class="p">(</span><span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+    <span class="n">box</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">r</span><span class="p">,</span> <span class="n">y</span> <span class="o">-</span> <span class="n">r</span><span class="p">),</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">r</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="n">r</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">box</span></div>
+
+<div class="viewcode-block" id="cr_circle"><a class="viewcode-back" href="../../board.html#board.crtool.cr_circle">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_circle</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;円盤を描く</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         x (float) : x-coordinate of the center</span>
+
+<span class="sd">         y (float) : y-coordinate of the center</span>
+
+<span class="sd">         r (float) : radius </span>
+
+<span class="sd">         fill (bool) : fill (True) or stroke (False, default)</span>
+
+<span class="sd">    Returns: </span>
+
+<span class="sd">         (Rect) : 包含矩形</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">new_sub_path</span><span class="p">()</span> <span class="c1">#for beginning with arc(). See pycairo manual</span>
+    <span class="n">box</span> <span class="o">=</span> <span class="n">cr_arc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="mi">0</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">box</span></div>
+
+<div class="viewcode-block" id="cr_text_extent"><a class="viewcode-back" href="../../board.html#board.crtool.cr_text_extent">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_text_extent</span><span class="p">(</span><span class="n">ox</span><span class="p">,</span> <span class="n">oy</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;テキストの配置情報を事前に取得する．Cairo.context.text_extents(msg)のラッパー．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+
+<span class="sd">         ox, oy (float) : テキストの配置位置 (ox, oy)</span>
+
+<span class="sd">         msg (str) : テキスト</span>
+
+<span class="sd">    Returns: </span>
+
+<span class="sd">         (tuple) : テキストの描画情報の6つ組 (x, y, width, height, dx, dy)</span>
+
+<span class="sd">    Note: </span>
+<span class="sd">      返り値の6つ組は次の通り</span>
+
+<span class="sd">      - x, y : テキストの配置位置．原点は左上</span>
+<span class="sd">      - width, height : テキストの包含矩形のサイズ</span>
+<span class="sd">      - dx, dy : グリフ位置の増分</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    
+    <span class="c1">## テキストの描画情報</span>
+    <span class="k">if</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">text_extents</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;msg must be non-None!&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span></div>
+
+<div class="viewcode-block" id="cr_text"><a class="viewcode-back" href="../../board.html#board.crtool.cr_text">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_text</span><span class="p">(</span><span class="n">ox</span><span class="p">,</span> <span class="n">oy</span><span class="p">,</span> <span class="n">msg</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="c1">#ffamily=&quot;Sans&quot;, fsize=10, source_rgb=None</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;文脈にテキストを描画する．Cairo.show_text(msg)のラッパー．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+
+<span class="sd">         ox, oy (float) : テキストの配置位置 (ox, oy)</span>
+
+<span class="sd">         msg (str) : テキスト</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="c1">## テキストの描画情報</span>
+    <span class="k">if</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="n">fx</span><span class="p">,</span> <span class="n">fy</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">text_extents</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;msg must be non-None!&#39;</span><span class="p">)</span>
+    <span class="c1">## テキストを描画</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="n">ox</span><span class="p">,</span> <span class="n">oy</span> <span class="o">+</span> <span class="n">height</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">show_text</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fx</span><span class="p">,</span> <span class="n">fy</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span></div>
+
+<span class="n">DEFAULT_MARKER_RADIUS</span><span class="o">=</span><span class="mi">5</span> 
+
+<div class="viewcode-block" id="cr_draw_marker_circle"><a class="viewcode-back" href="../../board.html#board.crtool.cr_draw_marker_circle">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_draw_marker_circle</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ay</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;円形(circle)のマークを描画する．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         ax (float) : 配置位置のx座標</span>
+
+<span class="sd">         ay (float) : 配置位置のy座標</span>
+
+<span class="sd">         r (float) : 半径．</span>
+
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">r</span><span class="p">:</span> 
+        <span class="n">r</span> <span class="o">=</span> <span class="n">DEFAULT_MARKER_RADIUS</span>  <span class="c1">#円の半径</span>
+    <span class="n">cr_circle</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ay</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="s1">&#39;fill&#39;</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span> <span class="c1">## 点</span>
+    <span class="k">return</span></div>
+
+<span class="n">DEFAULT_MARKER_TICKLEN</span><span class="o">=</span><span class="mi">4</span>
+
+<div class="viewcode-block" id="cr_draw_marker_cross"><a class="viewcode-back" href="../../board.html#board.crtool.cr_draw_marker_cross">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_draw_marker_cross</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="mf">0.25</span><span class="p">,</span> 
+                         <span class="n">ticklen</span><span class="o">=</span><span class="n">DEFAULT_MARKER_TICKLEN</span><span class="p">,</span>
+                         <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;十文字型（crossing）のマークを描画する．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         x (float) : 配置位置のx座標</span>
+
+<span class="sd">         y (float) : 配置位置のy座標</span>
+
+<span class="sd">         angle (float) : マーカーの十文字の向きをラジアンで指定する実数．</span>
+
+<span class="sd">         ticklen (float) : 十文字の各線分の長さ（default: DEFAULT_MARKER_TICKLEN)</span>
+
+<span class="sd">         context (cairo.Context) : Cairoの文脈オブジェクト．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">linewidth</span> <span class="o">=</span> <span class="n">kw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;linewidth&#39;</span><span class="p">,</span> <span class="n">altkeys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;line_width&#39;</span><span class="p">,</span> <span class="s1">&#39;pen_width&#39;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;linewidth&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">linewidth</span>
+    <span class="n">cr</span> <span class="o">=</span> <span class="n">context</span> 
+    <span class="n">cr</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+    <span class="n">cr_set_context_parameters</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="n">cr</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">angle</span><span class="p">)</span>
+    <span class="c1"># cr.set_line_width(linewidth)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">ticklen</span><span class="o">*</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ticklen</span><span class="o">*</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">ticklen</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">ticklen</span><span class="o">*</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">ticklen</span><span class="o">*</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">ticklen</span><span class="o">*</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">move_to</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">line_to</span><span class="p">(</span><span class="n">ticklen</span><span class="o">*</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">ticklen</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">))</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">stroke</span><span class="p">()</span>
+    <span class="n">cr</span><span class="o">.</span><span class="n">restore</span><span class="p">()</span>
+    <span class="k">return</span> </div>
+
+<span class="c1"># def cr_draw_marker_cross(x=0.0, y=0.0, angle=None, </span>
+<span class="c1">#                          ticklen=DEFAULT_MARKER_TICKLEN,</span>
+<span class="c1">#                          context=None, **kwargs):</span>
+<span class="c1">#     linewidth = kw.get(kwargs, key=&#39;linewidth&#39;, altkeys=[&#39;line_width&#39;, &#39;pen_width&#39;], default=2)</span>
+<span class="c1">#     kwargs[&#39;linewidth&#39;] = linewidth</span>
+<span class="c1">#     cr_set_context_parameters(context=context, **kwargs)</span>
+<span class="c1">#     if True: print(f&#39;@debug:cr_draw_marker_cross:{x,y,angle}&#39;)</span>
+<span class="c1">#     # context.save()</span>
+<span class="c1">#     # if angle != None:</span>
+<span class="c1">#     #     context.rotate(angle) #回転</span>
+<span class="c1">#     # if x != 0 or y != 0: </span>
+<span class="c1">#     #     context.translate(x, y)</span>
+<span class="c1">#         # cr_apply_trans(trans=Translate(x=x, y=y), context=context)</span>
+<span class="c1">#     ##十時型を書く</span>
+<span class="c1">#     ticklen=10</span>
+<span class="c1">#     context.move_to(0, 0)</span>
+<span class="c1">#     context.line_to(ticklen*1.0, ticklen*0.0)</span>
+<span class="c1">#     context.move_to(0, 0)</span>
+<span class="c1">#     context.line_to(ticklen*(-1.0), ticklen*0.0)</span>
+<span class="c1">#     context.move_to(0, 0)</span>
+<span class="c1">#     context.line_to(ticklen*0.0, ticklen*1.0)</span>
+<span class="c1">#     context.move_to(0, 0)</span>
+<span class="c1">#     context.line_to(ticklen*0.0, ticklen*(-1.0))</span>
+<span class="c1">#     ##描き終わり</span>
+<span class="c1">#     #context.restore()</span>
+<span class="c1">#     # ##十時型を書く</span>
+<span class="c1">#     # context.move_to(0, 0)</span>
+<span class="c1">#     # context.line_to(ticklen*1.0, ticklen*0.0)</span>
+<span class="c1">#     # context.move_to(0, 0)</span>
+<span class="c1">#     # context.line_to(ticklen*(-1.0), ticklen*0.0)</span>
+<span class="c1">#     # context.move_to(0, 0)</span>
+<span class="c1">#     # context.line_to(ticklen*0.0, ticklen*1.0)</span>
+<span class="c1">#     # context.move_to(0, 0)</span>
+<span class="c1">#     # context.line_to(ticklen*0.0, ticklen*(-1.0))</span>
+<span class="c1">#     # ##描き終わり</span>
+<span class="c1">#     # cr_process_stroke_or_fill(context=context, fill=&#39;fill&#39;)</span>
+<span class="c1">#     context.fill()</span>
+<span class="c1">#     return </span>
+
+<div class="viewcode-block" id="cr_draw_marker"><a class="viewcode-back" href="../../board.html#board.crtool.cr_draw_marker">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_draw_marker</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ay</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;関数cr_draw_marker_circleのラッパー関数．下位互換性のため．&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">cr_draw_marker_circle</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">ay</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="n">r</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<span class="c1">##=====</span>
+<span class="c1">## ヘルパー関数： 座表と座表変換</span>
+<span class="c1">##=====</span>
+
+<div class="viewcode-block" id="isBoxOrPoint"><a class="viewcode-back" href="../../board.html#board.crtool.isBoxOrPoint">[ドキュメント]</a><span class="k">def</span> <span class="nf">isBoxOrPoint</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;与えられたオブジェクトboxが，点または矩形かどうかを返す．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         box (tuple) : オブジェクト</span>
+
+<span class="sd">    Returns: </span>
+
+<span class="sd">         (bool) : boxが，点または矩形ならばTrue, それ以外ならばFalse. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">box</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="n">com</span><span class="o">.</span><span class="n">is_sequence_type</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">elemtype</span><span class="o">=</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="nb">int</span><span class="p">)):</span> 
+        <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">box</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">box</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="isProperPoint"><a class="viewcode-back" href="../../board.html#board.crtool.isProperPoint">[ドキュメント]</a><span class="k">def</span> <span class="nf">isProperPoint</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;与えられたオブジェクトboxが，点かどうかを返す．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">         box (tuple) : オブジェクト</span>
+<span class="sd">    Returns: </span>
+
+<span class="sd">         (bool) : boxが，点ならばTrue, それ以外ならばFalse. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">isBoxOrPoint</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">box</span><span class="p">)</span><span class="o">!=</span><span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="isProperBox"><a class="viewcode-back" href="../../board.html#board.crtool.isProperBox">[ドキュメント]</a><span class="k">def</span> <span class="nf">isProperBox</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;与えられたオブジェクトboxが，正しい矩形かをTrue, Falseで返す．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         box (tuple) : オブジェクト</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (bool) : boxが，4座標（矩形）からなる正しい矩形ならばTrue, それ以外ならばFalse. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">isBoxOrPoint</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">box</span><span class="p">)</span><span class="o">!=</span><span class="mi">4</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">box</span>
+        <span class="k">if</span> <span class="n">x1</span> <span class="o">&gt;=</span> <span class="n">x0</span> <span class="ow">and</span> <span class="n">y1</span> <span class="o">&gt;=</span> <span class="n">y0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="box_normalize"><a class="viewcode-back" href="../../board.html#board.crtool.box_normalize">[ドキュメント]</a><span class="k">def</span> <span class="nf">box_normalize</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;4座標（矩形）からなる正しい矩形であることを検査し，2座標（点）なら4座標に正規化する．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">isBoxOrPoint</span><span class="p">(</span><span class="n">box</span><span class="p">),</span> <span class="sa">f</span><span class="s1">&#39;box must be of TypeBoundingBox: type(box)=</span><span class="si">{</span> <span class="nb">type</span><span class="p">(</span><span class="n">box</span><span class="p">)</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">box</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+        <span class="n">box</span> <span class="o">=</span> <span class="p">(</span><span class="n">box</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">box</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">box</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">box</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">isProperBox</span><span class="p">(</span><span class="n">box</span><span class="p">),</span> <span class="sa">f</span><span class="s1">&#39;box must a properbox: box=</span><span class="si">{</span><span class="n">box</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">box</span></div>
+
+<div class="viewcode-block" id="box_shape"><a class="viewcode-back" href="../../board.html#board.crtool.box_shape">[ドキュメント]</a><span class="k">def</span> <span class="nf">box_shape</span><span class="p">(</span><span class="n">box</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;矩形 box = (x0, y0, x1, y1)を受け取り，その幅widthと高さheightを返す．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">box_normalize</span><span class="p">(</span><span class="n">box</span><span class="p">)</span>
+    <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">-</span> <span class="n">x0</span><span class="p">,</span> <span class="n">y1</span> <span class="o">-</span> <span class="n">y0</span>
+    <span class="k">return</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span></div>
+
+<span class="c1">#長方形の和（最小包含矩形）</span>
+<div class="viewcode-block" id="box_union"><a class="viewcode-back" href="../../board.html#board.crtool.box_union">[ドキュメント]</a><span class="k">def</span> <span class="nf">box_union</span><span class="p">(</span><span class="n">boxes</span><span class="p">,</span> <span class="n">box1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;矩形の対を受け取り，それらの最小包含長方形を表す対を返す．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">    	 boxes, box1 : 点 (x0, y0) または矩形 (x0, y0, x1, y1)</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">	 rect: 矩形 box = [p, q]</span>
+<span class="sd">&quot;&quot;&quot;</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">boxes</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;box_union: boxes must be non-None!&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">box1</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">boxes</span> 
+    <span class="k">else</span><span class="p">:</span> 
+        <span class="n">boxes</span> <span class="o">=</span> <span class="n">box_normalize</span><span class="p">(</span><span class="n">boxes</span><span class="p">)</span>
+        <span class="n">box1</span> <span class="o">=</span> <span class="n">box_normalize</span><span class="p">(</span><span class="n">box1</span><span class="p">)</span>
+        <span class="n">x0</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">boxes</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">box1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">y0</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">boxes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">box1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">boxes</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">box1</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">boxes</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">box1</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">)</span></div>
+
+<span class="c1">##======</span>
+<span class="c1">## 配置：ボード位置の微調整</span>
+<span class="c1">##======</span>
+
+<div class="viewcode-block" id="GeoTransform"><a class="viewcode-back" href="../../board.html#board.crtool.GeoTransform">[ドキュメント]</a><span class="k">class</span> <span class="nc">GeoTransform</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;空間変換の抽象クラス．これを継承した具体クラスを作成して用いる．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span>
+
+<div class="viewcode-block" id="GeoTransform.apply_context"><a class="viewcode-back" href="../../board.html#board.crtool.GeoTransform.apply_context">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">apply_context</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;変換をCairoの文脈contextに適用する．オーバーライドすること．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">              context (cairo.Context) : 文脈. </span>
+
+<span class="sd">              verbose (bool) : デバッグ出力のフラグ．default=False. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> </div>
+
+    <span class="c1">##Override</span>
+<div class="viewcode-block" id="GeoTransform.apply_point"><a class="viewcode-back" href="../../board.html#board.crtool.GeoTransform.apply_point">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">apply_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;変換を点(x, y)に適用した結果(x1, y1)を返す．オーバーライドすること．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">              x (float) : 適用対象の点のx座標</span>
+
+<span class="sd">              y (float) : 適用対象の点のy座標</span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">              (tuple(flaot, float)) : 変換後の点(x1, y1)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
+    
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;GeoTrans[</span><span class="si">{</span> <span class="bp">self</span> <span class="si">}</span><span class="s1">]&#39;</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__str__</span><span class="p">()</span>
+
+    <span class="k">pass</span> </div>
+
+<div class="viewcode-block" id="Translate"><a class="viewcode-back" href="../../board.html#board.crtool.Translate">[ドキュメント]</a><span class="k">class</span> <span class="nc">Translate</span><span class="p">(</span><span class="n">GeoTransform</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;並行移動の変換のクラス．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">    	  x (float) : x方向の移動量. </span>
+<span class="sd">    </span>
+<span class="sd">    	  y (float) : y方向の移動量. </span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">x</span><span class="o">!=</span><span class="kc">None</span> <span class="ow">and</span> <span class="n">y</span><span class="o">!=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="sa">f</span><span class="s1">&#39;x=</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s1"> and y=</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s1"> must be non-None!&#39;</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">isProperPoint</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)),</span> <span class="sa">f</span><span class="s1">&#39;p=</span><span class="si">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="si">}</span><span class="s1"> must be pair of float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Translate</span><span class="si">{</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+
+<div class="viewcode-block" id="Translate.apply_context"><a class="viewcode-back" href="../../board.html#board.crtool.Translate.apply_context">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">apply_context</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args: </span>
+<span class="sd">              context (cairo.Context) : 文脈. </span>
+
+<span class="sd">              verbose (bool) : デバッグ出力のフラグ．default=False. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">context</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;context must be non-None!&#39;</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">return</span> </div>
+
+    <span class="c1">##Override</span>
+<div class="viewcode-block" id="Translate.apply_point"><a class="viewcode-back" href="../../board.html#board.crtool.Translate.apply_point">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">apply_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;変換を点(x, y)に適用した結果(x1, y1)を返す．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">              x (float) : 適用対象の点のx座標</span>
+
+<span class="sd">              y (float) : 適用対象の点のy座標</span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">              (tuple(flaot, float)) : 変換後の点(x1, y1)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">isProperPoint</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)),</span> <span class="sa">f</span><span class="s1">&#39;p=</span><span class="si">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="si">}</span><span class="s1"> must be a point!&#39;</span><span class="p">)</span>
+        <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">return</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> </div>
+    <span class="k">pass</span> </div>
+
+<div class="viewcode-block" id="Rotate"><a class="viewcode-back" href="../../board.html#board.crtool.Rotate">[ドキュメント]</a><span class="k">class</span> <span class="nc">Rotate</span><span class="p">(</span><span class="n">GeoTransform</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;並行移動の変換のクラス</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">    	  angle (float) : 回転の量．単位はラジアンであり，`math.pi*0.5`, `math.pi/6`などのように指定する．</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">angle</span><span class="o">!=</span><span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span><span class="nb">int</span><span class="p">)),</span> 
+                   <span class="sa">f</span><span class="s1">&#39;angle=</span><span class="si">{</span><span class="n">angle</span><span class="si">}</span><span class="s1"> must be non-None!&#39;</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">isProperPoint</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)),</span> <span class="sa">f</span><span class="s1">&#39;p=</span><span class="si">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="si">}</span><span class="s1"> must be pair of float&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">angle</span> <span class="o">=</span> <span class="n">angle</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;Translate</span><span class="si">{</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+
+<div class="viewcode-block" id="Rotate.apply_context"><a class="viewcode-back" href="../../board.html#board.crtool.Rotate.apply_context">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">apply_context</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;変換を文脈に適用する．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">              context (cairo.Context) : 文脈. </span>
+
+<span class="sd">              verbose (bool) : デバッグ出力のフラグ．default=False. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">context</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;context must be non-None!&#39;</span><span class="p">)</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span>
+        <span class="k">return</span> </div>
+
+    <span class="c1">##Override</span>
+<div class="viewcode-block" id="Rotate.apply_point"><a class="viewcode-back" href="../../board.html#board.crtool.Rotate.apply_point">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">apply_point</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;変換を点(x, y)に適用した結果(x1, y1)を返す．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">              x (float) : 適用対象の点のx座標</span>
+
+<span class="sd">              y (float) : 適用対象の点のy座標</span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">              (tuple(flaot, float)) : 変換後の点(x1, y1)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">isProperPoint</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)),</span> <span class="sa">f</span><span class="s1">&#39;p=</span><span class="si">{</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="si">}</span><span class="s1"> must be a point!&#39;</span><span class="p">)</span>
+        <span class="c1">#2次元の回転</span>
+        <span class="n">x1</span> <span class="o">=</span> <span class="n">x</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span> <span class="o">+</span> <span class="n">y</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">x</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span> <span class="o">+</span> <span class="n">y</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">angle</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> </div>
+    <span class="k">pass</span> </div>
+
+<span class="c1">#=====</span>
+<span class="c1">#変換関数</span>
+<span class="c1">#=====</span>
+
+<div class="viewcode-block" id="box_apply_trans"><a class="viewcode-back" href="../../board.html#board.crtool.box_apply_trans">[ドキュメント]</a><span class="k">def</span> <span class="nf">box_apply_trans</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">trans</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span> 
+    <span class="sd">&quot;&quot;&quot;変換を適用する</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">          cr (Cairo.Context) : Cairo.Context</span>
+
+<span class="sd">          trans (GeoTransform) : 空間変換</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">box_normalize</span><span class="p">(</span><span class="n">box</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">trans</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;warning: empty trans: do nothing!&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="n">GeoTransform</span><span class="p">):</span>
+        <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span> <span class="o">=</span> <span class="n">trans</span><span class="o">.</span><span class="n">apply_point</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">)</span>
+        <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">trans</span><span class="o">.</span><span class="n">apply_point</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;trans must be of GeoTransform!: trans=</span><span class="si">{</span> <span class="n">trans</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span></div>
+
+<div class="viewcode-block" id="cr_apply_trans"><a class="viewcode-back" href="../../board.html#board.crtool.cr_apply_trans">[ドキュメント]</a><span class="k">def</span> <span class="nf">cr_apply_trans</span><span class="p">(</span><span class="n">trans</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span> 
+    <span class="sd">&quot;&quot;&quot;変換を適用する</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         context (Cairo.Context) : Cairo.Context</span>
+
+<span class="sd">         trans (GeoTransform) : 空間変換</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">context</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;context must not None!&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">trans</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;warning: empty trans&#39;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">else</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="n">GeoTransform</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="n">Translate</span><span class="p">):</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">trans</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">trans</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;no such GeoTransform is implemented!&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;trans must be of GeoTransform!: trans=</span><span class="si">{</span> <span class="n">trans</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+<span class="c1">#=====</span>
+<span class="c1">#変換関数</span>
+<span class="c1">#=====</span>
+
+<div class="viewcode-block" id="get_anchor_ratio"><a class="viewcode-back" href="../../board.html#board.crtool.get_anchor_ratio">[ドキュメント]</a><span class="k">def</span> <span class="nf">get_anchor_ratio</span><span class="p">(</span><span class="n">anchor_x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">anchor_y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">anchor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;アンカーキーワード(anchor_x, anchor_y)またはanchorを受け取り</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         anchor_x (str) : 横方向の位置指示 in (left, center, right)</span>
+
+<span class="sd">         anchor_y (str) : 縦方向の位置指示 in (top, middle, bottom, above, below)</span>
+
+<span class="sd">         anchor (str) : 代替の位置指示．単一キーワードまたはキーワードの対(anchor_x, anchor_y)．単一キーワードのときは，値に応じて横または縦の位置表示として用いる．</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (tuple(float, float)) : 矩形[0,1]x[0,1]における正規化されたアンカー位置(anchor_x, anchor_y) in [0,1]x[0,1]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">## アンカーキーの正規化</span>
+    <span class="n">ratio_x</span><span class="p">,</span> <span class="n">ratio_y</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">anchor_x</span><span class="o">==</span><span class="kc">None</span> <span class="ow">and</span> <span class="n">anchor_y</span><span class="o">==</span><span class="kc">None</span> <span class="ow">and</span> <span class="n">anchor</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">anchor</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">anchor</span> <span class="ow">in</span> <span class="n">ALIGN_X</span><span class="p">:</span> <span class="n">anchor_x</span> <span class="o">=</span> <span class="n">anchor</span>
+            <span class="k">if</span> <span class="n">anchor</span> <span class="ow">in</span> <span class="n">ALIGN_Y</span><span class="p">:</span> <span class="n">anchor_y</span> <span class="o">=</span> <span class="n">anchor</span>
+        <span class="k">elif</span> <span class="n">com</span><span class="o">.</span><span class="n">is_sequence_type</span><span class="p">(</span><span class="n">anchor</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span> 
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">anchor</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">anchor</span> <span class="ow">in</span> <span class="n">ALIGN_X</span><span class="p">:</span> <span class="n">anchor_x</span> <span class="o">=</span> <span class="n">anchor</span>
+                <span class="k">if</span> <span class="n">anchor</span> <span class="ow">in</span> <span class="n">ALIGN_Y</span><span class="p">:</span> <span class="n">anchor_y</span> <span class="o">=</span> <span class="n">anchor</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">anchor</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">ALIGN_X</span><span class="p">:</span> <span class="n">anchor_x</span> <span class="o">=</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="n">ALIGN_Y</span><span class="p">:</span> <span class="n">anchor_y</span> <span class="o">=</span> <span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;get_align: a wrong anchor=</span><span class="si">{</span><span class="n">anchor</span><span class="si">}</span><span class="s1">!&#39;</span><span class="p">)</span>
+    
+    <span class="c1">## アンカーキーからアンカー比率へ変換</span>
+    <span class="k">if</span> <span class="n">anchor_x</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">anchor_x</span> <span class="ow">in</span> <span class="n">ALIGN_X</span><span class="p">:</span>
+        <span class="n">ratio_x</span> <span class="o">=</span> <span class="n">ALIGN_X</span><span class="p">[</span><span class="n">anchor_x</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ratio_x</span> <span class="o">=</span> <span class="n">DEFAULT_ALIGN_RATIO_X</span>
+    <span class="k">if</span> <span class="n">anchor_y</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">anchor_y</span> <span class="ow">in</span> <span class="n">ALIGN_Y</span><span class="p">:</span>
+        <span class="n">ratio_y</span> <span class="o">=</span> <span class="n">ALIGN_Y</span><span class="p">[</span><span class="n">anchor_y</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ratio_y</span> <span class="o">=</span> <span class="n">DEFAULT_ALIGN_RATIO_Y</span>
+    <span class="k">return</span> <span class="n">ratio_x</span><span class="p">,</span> <span class="n">ratio_y</span></div>
+
+<div class="viewcode-block" id="get_point_by_anchor_ratio"><a class="viewcode-back" href="../../board.html#board.crtool.get_point_by_anchor_ratio">[ドキュメント]</a><span class="k">def</span> <span class="nf">get_point_by_anchor_ratio</span><span class="p">(</span><span class="n">box</span><span class="p">,</span> <span class="n">ratio_x</span><span class="p">,</span> <span class="n">ratio_y</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;矩形とアンカー表示を受け取り，矩形上のアンカー点の座標を返す．</span>
+
+<span class="sd">    Args: </span>
+<span class="sd">         ratio_x (float) : 正規化されたx方向の位置 in [0,1]</span>
+
+<span class="sd">         ratio_y (float) : 正規化されたy方向の位置 in [0,1]</span>
+
+<span class="sd">    Returns: </span>
+<span class="sd">         (tuple(float, float)) : 包含矩形box上のアンカー位置の点 (x, y)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#boxの準備</span>
+    <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">box</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">isBoxOrPoint</span><span class="p">(</span><span class="n">box</span><span class="p">),</span>
+               <span class="sa">f</span><span class="s1">&#39;get_anchor_by_ratio: box must be a box or a point!&#39;</span><span class="p">)</span>
+    <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span> <span class="o">=</span> <span class="n">box_normalize</span><span class="p">(</span><span class="n">box</span><span class="p">)</span> 
+    <span class="c1"># compute x-anchor </span>
+    <span class="k">if</span> <span class="n">x1</span> <span class="o">-</span> <span class="n">x0</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">x</span> <span class="o">=</span> <span class="n">x0</span>
+    <span class="k">else</span><span class="p">:</span> <span class="n">x</span> <span class="o">=</span> <span class="n">x0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">ratio_x</span><span class="p">)</span> <span class="o">+</span> <span class="n">x1</span> <span class="o">*</span> <span class="p">(</span><span class="n">ratio_x</span><span class="p">)</span>            
+    <span class="c1"># compute y-anchor </span>
+    <span class="k">if</span> <span class="n">y1</span> <span class="o">-</span> <span class="n">y0</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">y</span> <span class="o">=</span> <span class="n">y0</span>
+    <span class="k">else</span><span class="p">:</span> <span class="n">y</span> <span class="o">=</span> <span class="n">y0</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">ratio_y</span><span class="p">)</span> <span class="o">+</span> <span class="n">y1</span> <span class="o">*</span> <span class="p">(</span><span class="n">ratio_y</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@debug: get_anchor_by_ratio: anchor_ratio=</span><span class="si">{</span><span class="n">ratio_x</span><span class="p">,</span> <span class="n">ratio_y</span><span class="si">}</span><span class="s1"> &#39;</span><span class="o">+</span>
+              <span class="sa">f</span><span class="s1">&#39;=&gt; anchor_coordinates=</span><span class="si">{</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span></div>
+
+
+<span class="c1">##EOF</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Hiroki Arimura, Hokkaido University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

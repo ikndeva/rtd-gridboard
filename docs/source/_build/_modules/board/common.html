@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="ja" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>board.common &mdash; GridBoard 0.7 ドキュメント</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/translations.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../../genindex.html" />
+    <link rel="search" title="検索" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> GridBoard
+          </a>
+              <div class="version">
+                v2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../board.html">board package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GridBoard</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">モジュールコード</a> &raquo;</li>
+      <li>board.common</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>board.common のソースコード</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3 </span>
+<span class="c1"># coding: utf_8</span>
+<span class="c1"># bintree.py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">math</span> 
+<span class="c1"># import kwargs as kw</span>
+
+<span class="c1">## constants</span>
+
+<span class="n">DEFAULT_PEN_WIDTH</span><span class="o">=</span><span class="mf">0.25</span>
+
+<span class="c1">#parameters</span>
+<span class="n">verbose</span><span class="o">=</span><span class="kc">True</span>
+<span class="n">debug</span><span class="o">=</span><span class="kc">False</span>
+
+<span class="c1"># # A template for docstring </span>
+<span class="c1"># Parameters</span>
+<span class="c1"># ----------</span>
+<span class="c1"># name: type</span>
+      
+    <span class="c1"># Returns </span>
+    <span class="c1"># ----------</span>
+
+<span class="c1">#=====</span>
+<span class="c1">#ヘルパー関数</span>
+<span class="c1">#=====</span>
+
+<div class="viewcode-block" id="log"><a class="viewcode-back" href="../../board.html#board.common.log">[ドキュメント]</a><span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">outs</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">):</span>
+     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span> <span class="n">msg</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="panic"><a class="viewcode-back" href="../../board.html#board.common.panic">[ドキュメント]</a><span class="k">def</span> <span class="nf">panic</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">outs</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+     <span class="sd">&quot;&quot;&quot;メッセージ文字列を標準出力に印刷して，例外を投げて実行を中止する．</span>
+<span class="sd">     </span>
+<span class="sd">     Args: </span>
+<span class="sd">    	msg (str): メッセージ文字列</span>
+<span class="sd">     </span>
+<span class="sd">    	outs (outstream): 出力ストリーム．デフォールトはsys.stdout. </span>
+<span class="sd">     &quot;&quot;&quot;</span>
+     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@panic!: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">outs</span><span class="p">)</span>
+     <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;panic!&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ensure"><a class="viewcode-back" href="../../board.html#board.common.ensure">[ドキュメント]</a><span class="k">def</span> <span class="nf">ensure</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+     <span class="sd">&quot;&quot;&quot;ブール式test を評価し，真ならばTrueを返し，偽ならば，panic関数を呼んで，メッセージ文字列を出力して実行を中止する．</span>
+
+<span class="sd">     Args: </span>
+<span class="sd">    	test (ブール式): テストのためのブール式</span>
+
+<span class="sd">    	msg (str): メッセージ文字列</span>
+
+<span class="sd">    	outs (outstream): 出力ストリーム．デフォールトはsys.stdout. </span>
+<span class="sd">     &quot;&quot;&quot;</span>
+     <span class="k">if</span> <span class="n">test</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">test</span>
+     <span class="k">else</span><span class="p">:</span>
+          <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@ensure: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">outs</span><span class="o">=</span><span class="n">outs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="report_module_path"><a class="viewcode-back" href="../../board.html#board.common.report_module_path">[ドキュメント]</a><span class="k">def</span> <span class="nf">report_module_path</span><span class="p">(</span><span class="n">name</span><span class="p">):</span> 
+     <span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@printing paths in module:</span><span class="si">{</span> <span class="n">name</span> <span class="si">}</span><span class="s1">...&#39;</span><span class="p">)</span>
+     <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+          <span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; - </span><span class="si">{</span> <span class="n">d</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+          <span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;@paths end&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="is_sequence_type"><a class="viewcode-back" href="../../board.html#board.common.is_sequence_type">[ドキュメント]</a><span class="k">def</span> <span class="nf">is_sequence_type</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">elemtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+     <span class="sd">&quot;&quot;&quot;オブジェクトLが系列として扱える型ならば`True`を返し，それ以外のとき`False`を返す．</span>
+<span class="sd">     さらに系列型であり，elemtypeがNoneでないときに，系列の全ての要素が型elemtypeをもつならば`True`，そうでなければ`False`を返す．</span>
+
+<span class="sd">     Args : </span>
+<span class="sd">       L (object) : オブジェクト</span>
+<span class="sd">       elemtype (Type) : int, float, strなどのprimitive型，または，union type `(ty1, ..., tyN)`. </span>
+<span class="sd">       verbose (bool) : ログ出力のスイッチ</span>
+
+<span class="sd">     Returns : </span>
+<span class="sd">       (bool) : オブジェクトLが，elemtypeの型指定を満たす系列型ならば`True`を, そうでなければ`False`を返す．</span>
+
+<span class="sd">     Example: </span>
+<span class="sd">       &gt;&gt;&gt; com.is_sequence_type([1,2,3], elemtype=int)</span>
+<span class="sd">       True</span>
+<span class="sd">       &gt;&gt;&gt; com.is_sequence_type([1,2.0,3], elemtype=int)</span>
+<span class="sd">       False</span>
+<span class="sd">       &gt;&gt;&gt; com.is_sequence_type([1,2.0,3], elemtype=(int, float))</span>
+<span class="sd">       True</span>
+<span class="sd">       &gt;&gt;&gt; com.is_sequence_type([1,&#39;b&#39;,3], elemtype=int)</span>
+<span class="sd">       False</span>
+<span class="sd">       &gt;&gt;&gt; com.is_sequence_type([1,&#39;b&#39;,3], elemtype=(int, str))     </span>
+<span class="sd">       True </span>
+<span class="sd">     &quot;&quot;&quot;</span>
+     <span class="c1">## 引数テスト</span>
+     <span class="n">elemtypes_</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1">## 作業用：a list for a union type</span>
+     <span class="k">if</span> <span class="n">elemtype</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span> 
+          <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elemtype</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span> <span class="c1">## primitive type</span>
+               <span class="n">elemtypes_</span> <span class="o">=</span> <span class="p">[</span><span class="n">elemtype</span><span class="p">]</span>
+               <span class="k">pass</span>
+          <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elemtype</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span> <span class="c1">##union type</span>
+               <span class="n">elemtypes_</span> <span class="o">=</span> <span class="p">[]</span>
+               <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">ty</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">elemtype</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ty</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+                         <span class="n">elemtypes_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ty</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span> 
+                         <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;common.is_sequence: the </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">-th element &quot;</span><span class="si">{</span> <span class="n">ty</span> <span class="si">}</span><span class="s1">&quot; of elemtype must be a type object!&#39;</span><span class="p">)</span>
+          <span class="k">else</span><span class="p">:</span> 
+               <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;common.is_sequence: elemtype=&quot;</span><span class="si">{</span><span class="n">elemetype</span><span class="si">}</span><span class="s1">&quot; must be a type object!&#39;</span><span class="p">)</span>
+     
+     <span class="c1">## 系列型かどうかをテスト</span>
+     <span class="n">isSeq</span> <span class="o">=</span> <span class="kc">False</span>
+     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+          <span class="n">isSeq</span> <span class="o">=</span> <span class="kc">True</span>
+     <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">):</span>
+          <span class="c1">## iterableかどうかを判定する標準の書き方</span>
+          <span class="n">isSeq</span> <span class="o">=</span> <span class="kc">True</span>
+     
+     <span class="k">if</span> <span class="ow">not</span> <span class="n">isSeq</span><span class="p">:</span> 
+          <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;warning: common.is_sequence: the object L is not of sequence type!: L=</span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+          <span class="k">return</span> <span class="kc">False</span>
+     <span class="k">else</span><span class="p">:</span> <span class="c1">## isSeq==True</span>
+          <span class="c1">## もしelemtypeが与えられていたら，さらに要素型をテストする</span>
+          <span class="k">if</span> <span class="n">elemtypes_</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span> 
+               <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">elem</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+                    <span class="n">res_</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">for</span> <span class="n">ty</span> <span class="ow">in</span> <span class="n">elemtypes_</span><span class="p">:</span> 
+                         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elem</span><span class="p">,</span> <span class="n">ty</span><span class="p">):</span>
+                              <span class="n">res_</span> <span class="o">=</span> <span class="kc">True</span>
+                              <span class="k">break</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">res_</span><span class="p">:</span> 
+                         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;warning: common.is_sequence: the </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">-th element &quot;</span><span class="si">{</span><span class="n">elem</span><span class="si">}</span><span class="s1">&quot; does not satisfies type &quot;</span><span class="si">{</span><span class="n">elemtype</span><span class="si">}</span><span class="s1">&quot; in the sequence </span><span class="si">{</span><span class="n">L</span><span class="si">}</span><span class="s1">!&#39;</span><span class="p">)</span>
+                         <span class="k">return</span> <span class="kc">False</span>
+          <span class="c1">## 全ての要素が要素型を満たした</span>
+          <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="normalize_elemtype"><a class="viewcode-back" href="../../board.html#board.common.normalize_elemtype">[ドキュメント]</a><span class="k">def</span> <span class="nf">normalize_elemtype</span><span class="p">(</span><span class="n">elemtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> 
+     <span class="c1">## 引数テスト</span>
+     <span class="n">elemtypes_</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1">## 作業用：a list for a union type</span>
+     <span class="k">if</span> <span class="n">elemtype</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+          <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;normalize_elemtype: elemtype must be non-None!&#39;</span><span class="p">)</span>
+     <span class="k">else</span><span class="p">:</span>
+          <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elemtype</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span> <span class="c1">## primitive type</span>
+               <span class="n">elemtypes_</span> <span class="o">=</span> <span class="p">[</span><span class="n">elemtype</span><span class="p">]</span>
+          <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">elemtype</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span> <span class="c1">##union type</span>
+               <span class="n">elemtypes_</span> <span class="o">=</span> <span class="p">[]</span>
+               <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">ty</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">elemtype</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ty</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+                         <span class="n">elemtypes_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ty</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span> 
+                         <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;normalize_elemtype: the </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">-th element &quot;</span><span class="si">{</span> <span class="n">ty</span> <span class="si">}</span><span class="s1">&quot; of elemtype must be a type object!&#39;</span><span class="p">)</span>
+          <span class="k">else</span><span class="p">:</span> 
+               <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;normalize_elemtype: elemtype=&quot;</span><span class="si">{</span><span class="n">elemetype</span><span class="si">}</span><span class="s1">&quot; must be a type object!&#39;</span><span class="p">)</span>
+     <span class="k">return</span> <span class="n">elemtypes_</span></div>
+          
+<div class="viewcode-block" id="is_typeof"><a class="viewcode-back" href="../../board.html#board.common.is_typeof">[ドキュメント]</a><span class="k">def</span> <span class="nf">is_typeof</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">elemtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+     <span class="sd">&quot;&quot;&quot;オブジェクトobjが空でなく，型elemtypeをもつとき，`True`を返し，それ以外のとき`False`を返す．</span>
+<span class="sd">     Args : </span>
+<span class="sd">       obj (object) : オブジェクト</span>
+<span class="sd">       elemtype (Type) : 型のリスト`(ty1, ..., tyN)`．</span>
+<span class="sd">     Returns : </span>
+<span class="sd">       (bool) : オブジェクトobjが，elemtypeの型指定を満たすならば`True`を, そうでなければ`False`を返す．</span>
+<span class="sd">     &quot;&quot;&quot;</span>
+     <span class="c1">## 引数テスト: 型リストに正規化する．単一型tは，単一元リスト(t)とする．</span>
+     <span class="n">elemtypes_</span> <span class="o">=</span> <span class="n">normalize_elemtype</span><span class="p">(</span><span class="n">elemtype</span><span class="o">=</span><span class="n">elemtype</span><span class="p">)</span>
+     
+     <span class="c1">## 要素型をテストする</span>
+     <span class="k">for</span> <span class="n">ty</span> <span class="ow">in</span> <span class="n">elemtypes_</span><span class="p">:</span> 
+          <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">ty</span><span class="p">):</span>  
+               <span class="k">return</span> <span class="kc">True</span>  <span class="c1">##型tyを満たした</span>
+     <span class="k">return</span> <span class="kc">False</span> <span class="c1">##どの型も満たさない</span></div>
+
+
+<div class="viewcode-block" id="ensure_defined"><a class="viewcode-back" href="../../board.html#board.common.ensure_defined">[ドキュメント]</a><span class="k">def</span> <span class="nf">ensure_defined</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+	<span class="sd">&quot;&quot;&quot;空でなければ，値valueをそのまま返す．代入時に，変数の値が空でないことを保証するために用いる．</span>
+
+<span class="sd">	* 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．</span>
+<span class="sd">	* そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．</span>
+
+<span class="sd">	Args: </span>
+<span class="sd">	     value (Any) : 値</span>
+
+<span class="sd">	     default (Any) : デフォールト値</span>
+
+<span class="sd">	     required (bool) : 値が非Noneであることを要請するフラグ．</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="k">if</span> <span class="n">value</span><span class="o">==</span><span class="kc">None</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">required</span><span class="o">==</span><span class="kc">False</span> <span class="ow">and</span> <span class="n">default</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="k">return</span> <span class="n">default</span>
+		<span class="k">else</span><span class="p">:</span> 
+			<span class="n">panic</span><span class="p">(</span><span class="s1">&#39;wrap_default: value=</span><span class="si">{value}</span><span class="s1"> is required and default=</span><span class="si">{default}</span><span class="s1">!:&#39;</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">return</span> <span class="n">value</span> </div>
+          
+<span class="c1">##=====</span>
+<span class="c1">## 便利関数：コマンドライン入力</span>
+<span class="c1">##=====</span>
+<span class="c1">#未使用</span>
+<div class="viewcode-block" id="parse_opt_shape"><a class="viewcode-back" href="../../board.html#board.common.parse_opt_shape">[ドキュメント]</a><span class="k">def</span> <span class="nf">parse_opt_shape</span><span class="p">(</span><span class="n">str_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default_shape</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+     <span class="sd">&quot;&quot;&quot;shape文字列str_shape==&#39;m:n&#39;をパーズしてshape = (m,n)を返す</span>
+<span class="sd">     &quot;&quot;&quot;</span>
+     <span class="k">if</span> <span class="n">str_shape</span><span class="p">:</span>
+          <span class="n">shape0</span> <span class="o">=</span> <span class="n">str_shape</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+          <span class="n">ensure</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape0</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;shape=</span><span class="si">{mn}</span><span class="s1"> must have two numbers!&#39;</span><span class="p">)</span>
+          <span class="n">shape</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span>
+          <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+               <span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">shape0</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+          <span class="k">return</span> <span class="n">shape</span>
+     <span class="k">else</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">default_shape</span></div>
+
+<span class="c1">#未使用</span>
+<div class="viewcode-block" id="parse_opt_width"><a class="viewcode-back" href="../../board.html#board.common.parse_opt_width">[ドキュメント]</a><span class="k">def</span> <span class="nf">parse_opt_width</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> 
+     <span class="k">if</span> <span class="n">width</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">width</span>
+     <span class="k">else</span><span class="p">:</span>
+          <span class="k">return</span> <span class="n">DEFAULT_PEN_WIDTH</span> <span class="c1">#基底描画システムのデフォールト値</span></div>
+
+<span class="c1">#未使用</span>
+<div class="viewcode-block" id="get_cyclic"><a class="viewcode-back" href="../../board.html#board.common.get_cyclic">[ドキュメント]</a><span class="k">def</span> <span class="nf">get_cyclic</span><span class="p">(</span><span class="n">elements</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">idx</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+     <span class="sd">&quot;&quot;&quot;非負整数idxを受け取り，長さnの配列の`(idx % n)`番目の要素を返す．</span>
+<span class="sd">     Args: </span>
+<span class="sd">    	elements=None (list(object))</span>
+<span class="sd">    	idx=0 (int)</span>
+<span class="sd">     Returns: </span>
+<span class="sd">    	object: 選択された要素</span>
+<span class="sd">     Notes: </span>
+<span class="sd">    	どのように大きなidxに対しても，添字エラーにならず何かの要素を返す．</span>
+<span class="sd">     &quot;&quot;&quot;</span>
+     <span class="k">return</span> <span class="n">elements</span><span class="p">[</span><span class="n">idx</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)]</span></div>
+
+<span class="c1">##=====</span>
+<span class="c1">## ヘルパー関数：</span>
+<span class="c1">##=====</span>
+
+<span class="c1">##=====</span>
+<span class="c1">## EOF </span>
+<span class="c1">##=====</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Hiroki Arimura, Hokkaido University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

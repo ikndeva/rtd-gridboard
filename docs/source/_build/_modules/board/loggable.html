@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="ja" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>board.loggable &mdash; GridBoard 0.7 ドキュメント</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/translations.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../../genindex.html" />
+    <link rel="search" title="検索" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> GridBoard
+          </a>
+              <div class="version">
+                v2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../board.html">board package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">GridBoard</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../index.html">モジュールコード</a> &raquo;</li>
+      <li>board.loggable</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>board.loggable のソースコード</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3 </span>
+<span class="c1"># coding: utf_8</span>
+<span class="c1"># loggable.py </span>
+<span class="sd">&quot;&quot;&quot;ボードの基本機能を提供するモジュール．</span>
+
+<span class="sd">* loggableモジュールは，ボードオブジェクトが，複合画像の木のノードとしてもつ最低限の機能を提供する．</span>
+<span class="sd">* 複合画像を表すボードオブジェクトは木構造をなす．</span>
+<span class="sd">* Loggableオブジェクトは，次の機能を提供する: </span>
+
+<span class="sd">	* 親子情報の管理</span>
+<span class="sd">	* ログ出力の管理</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">common</span> <span class="k">as</span> <span class="nn">com</span>
+<span class="kn">import</span> <span class="nn">kwargs</span> <span class="k">as</span> <span class="nn">kw</span>
+
+<span class="c1">#==========</span>
+<span class="c1"># 補助クラス</span>
+<span class="c1">#==========</span>
+
+<div class="viewcode-block" id="LoggableHolder"><a class="viewcode-back" href="../../board.html#board.loggable.LoggableHolder">[ドキュメント]</a><span class="k">class</span> <span class="nc">LoggableHolder</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Loggableにおける子のホルダー．子に加えて，補助情報を保持する子クラスを生成して利用する．</span>
+<span class="sd">     </span>
+<span class="sd">    Args: </span>
+<span class="sd">         child (Loggable) : 保持する子の初期値．default=None. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_child</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+        <span class="k">return</span> 
+
+<div class="viewcode-block" id="LoggableHolder.get_child"><a class="viewcode-back" href="../../board.html#board.loggable.LoggableHolder.get_child">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">get_child</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;ホルダーの子要素を設定する．子要素は`None`を許す. </span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">               (Loggable) : ホルダーがもつ子要素</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">child</span></div>
+      
+<div class="viewcode-block" id="LoggableHolder.set_child"><a class="viewcode-back" href="../../board.html#board.loggable.LoggableHolder.set_child">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">set_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;ホルダーの子要素を設定し，自分自身を返す．</span>
+<span class="sd">        子要素`child`が`None`のときは，エラーを投げて終了する．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">             child (Loggable) : ホルダーに設定する子要素</span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">             (Loggable) : 自分自身．(cascading style API)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">child</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">):</span>
+            <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;if child is not None, it must be Loggable: it=</span><span class="si">{</span><span class="n">child</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">child</span> <span class="o">=</span> <span class="n">child</span> 
+        <span class="k">return</span> <span class="bp">self</span> </div>
+    <span class="k">pass</span> <span class="c1">##class ChildHolder</span></div>
+
+<span class="c1">#==========</span>
+<span class="c1"># 基底オブジェクトのクラス</span>
+<span class="c1">#==========</span>
+<div class="viewcode-block" id="Loggable"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable">[ドキュメント]</a><span class="k">class</span> <span class="nc">Loggable</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;ボードの最基底クラス．</span>
+<span class="sd">    複合画像を表すボードオブジェクトの木のノードがもつ最低限の機能を提供する．</span>
+
+<span class="sd">    Args: </span>
+
+<span class="sd">           dep_init (int) : 深さの初期値．default=None. </span>
+
+<span class="sd">           tags (str, list(str)) : タグ文字列またはタグ文字列のリスト．タグ文字列のリストは，オブジェクトの属性`tags`に保持され，実装者と利用者により，各種の用途に用いることができる．default=None. </span>
+
+<span class="sd">           verbose (bool) : デバッグ用出力のフラグ．default=False. </span>
+
+<span class="sd">           **kwargs : 任意のオプション引数．オブジェクトの属性`kwargs`に保持されて，実装者と利用者により，各種の用途に用いることができる．</span>
+
+<span class="sd">    Attributes: </span>
+
+<span class="sd">           tags (str, list(str)) : タグ文字列またはタグ文字列のリスト．実装者と利用者により，各種の用途に用いることができる．</span>
+
+<span class="sd">           kwargs (dict) : オプション引数の辞書．オブジェクトの属性`kwargs`に保持されて，実装者と利用者により，各種の用途に用いることができる．</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_freeLID</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1">#loggable id (lid)</span>
+    
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">dep_init</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="c1"># dep_init=None,</span>
+                 <span class="n">max_children</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> 
+                 <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                 <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        生成するコンストラクタ．</span>
+<span class="sd">        Args: </span>
+<span class="sd">             depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0</span>
+
+<span class="sd">		     verbose (bool): 実行情報を表示する</span>
+
+<span class="sd">             **kwargs (dict) : 他のキーワード引数．上位クラスに渡される．</span>
+
+<span class="sd">        Atributes : </span>
+<span class="sd">            depth (int): デバッグ用のボード構成の入れ子の深さを表す非負整数．</span>
+
+<span class="sd">            verbose (bool): 実行情報を表示する．</span>
+
+<span class="sd">            id (int): ボードオブジェクトの連番．0で始まる．</span>
+
+<span class="sd">            kwargs (dict) : キーワードを格納する辞書．キーワードは任意のものを使って良い．ボードの内部変数の階層化のためであり，関数`kw.get(kwargs, key)`を用いてアクセスする．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1">## 引数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="n">dep_init</span> <span class="c1">#dep_init can be None, which means `undefined`.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span>  <span class="o">=</span> <span class="n">kwargs</span> 
+		
+        <span class="c1">## 内部変数</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># 親オブジェクト</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">Loggable</span><span class="o">.</span><span class="n">_freeLID</span><span class="p">;</span>          
+        <span class="n">Loggable</span><span class="o">.</span><span class="n">_freeLID</span> <span class="o">+=</span> <span class="mi">1</span>
+		
+        <span class="c1">## 子供</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">children_</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># 子のリスト</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ord_</span>   <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># 子ID (親の子リスト中の自身の添字)．外部アクセスに必要．</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_children_</span> <span class="o">=</span> <span class="n">max_children</span> <span class="c1"># 子数の上限（&gt;=0）．-1 means unbounded</span>
+		
+        <span class="c1">#タグ</span>
+        <span class="k">if</span> <span class="n">tags</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTag</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+        <span class="k">return</span> 
+
+    <span class="c1">#=====</span>
+    <span class="c1"># キーワード辞書</span>
+    <span class="c1">#=====</span>
+<div class="viewcode-block" id="Loggable.vars"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.vars">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;自身のオブジェクトの属性からなる辞書を返す．</span>
+<span class="sd">        その際，未定義（値がNone）の属性はスキップする．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">kw</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span></div>
+	
+<div class="viewcode-block" id="Loggable.myinfo"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.myinfo">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">myinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">ord</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;便利関数．ログ用に，Boardオブジェクトの情報の文字列を返す．</span>
+<span class="sd">          &quot;&quot;&quot;</span>
+        <span class="n">bstr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">if</span> <span class="n">depth</span><span class="p">:</span> 
+            <span class="n">bstr</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;[depth=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="si">}</span><span class="s2">]&quot;</span>
+        <span class="k">if</span> <span class="nb">ord</span><span class="p">:</span> 
+            <span class="n">bstr</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;[ord=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">ord_</span> <span class="si">}</span><span class="s2">]&quot;</span>
+        <span class="k">if</span> <span class="n">tag</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">:</span> 
+            <span class="n">bstr</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;[&#39;</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">tag</span> <span class="si">}</span><span class="s2">&#39;]&quot;</span>
+        <span class="k">return</span> <span class="n">bstr</span></div>
+
+    <span class="c1">#=====</span>
+    <span class="c1"># 親子関係</span>
+    <span class="c1">#=====</span>
+
+<div class="viewcode-block" id="Loggable.fetch"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.fetch">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">fetch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;自分の先祖にフィールド`key`が定義されているボードがあれば，そのような直近の先祖での値を返す．もしそのような先祖がなければ，`default`が指定されていれば，その値を返し，それ以外ならば`None`を返す．</span>
+<span class="sd">        </span>
+<span class="sd">        Args: </span>
+<span class="sd">             key (str) : 検索するキー文字列</span>
+
+<span class="sd">             default (Any) : キーをもつ先祖が見つからない時に返すデフォールト値</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">             (Any) : キーをもつ最近先祖におけるキーの値</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">key</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;fetch: key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> must not be None!&#39;</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">default</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;fetch: default=</span><span class="si">{</span><span class="n">default</span><span class="si">}</span><span class="s1"> must not be None!&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">repo</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;@debug:fetch: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span><span class="si">}</span><span class="s1">.fetch:&#39;</span><span class="o">+</span>
+                      <span class="sa">f</span><span class="s1">&#39; key=</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1"> =&gt; </span><span class="si">{</span><span class="n">key</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s1">: against&#39;</span><span class="o">+</span>
+                      <span class="sa">f</span><span class="s1">&#39; vars=</span><span class="si">{</span><span class="n">kw</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vars</span><span class="p">(),</span> <span class="n">deleted</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;children_&quot;</span><span class="p">])</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)[</span><span class="n">key</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">default</span>
+        <span class="k">else</span><span class="p">:</span> <span class="c1">## assuming isinstance(self.parent, Loggable)</span>
+            <span class="n">val_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">repo</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;@debug:fetch: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span><span class="si">}</span><span class="s1">.fetch =&gt; val=</span><span class="si">{</span><span class="n">val_</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">val_</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;fetch: val=</span><span class="si">{</span><span class="n">val_</span><span class="si">}</span><span class="s1"> must not be None!&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">val_</span></div>
+
+    <span class="c1">#exp 親子関係の管理</span>
+<div class="viewcode-block" id="Loggable.register_child"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.register_child">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">register_child</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> 
+        <span class="sd">&quot;&quot;&quot;親子関係の管理．</span>
+<span class="sd">        </span>
+<span class="sd">        Args: </span>
+<span class="sd">             child (Board) : 自身に追加する子．制約として，childは親をもってはいけない．すなわち，`child.parent != None`の場合は，エラーとなる．</span>
+
+<span class="sd">        Note: </span>
+<span class="sd">             自身が既に子をもっていた場合は，エラーにならず，単に新しい子で上書きする．子が既に他の親を持っていた場合は，エラーを投げて強制終了する．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">),</span>
+                   <span class="sa">f</span><span class="s1">&#39;child=</span><span class="si">{</span><span class="n">child</span><span class="si">}</span><span class="s1"> must be a subclass of Loggable!&#39;</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">parent</span> <span class="o">==</span> <span class="kc">None</span><span class="p">,</span>
+                   <span class="sa">f</span><span class="s1">&#39;parent is already defined! parent=</span><span class="si">{</span><span class="n">child</span><span class="o">.</span><span class="n">parent</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+         
+        <span class="c1">##親の属性verboseを子に引き継ぐ．</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">child</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span>
+          
+        <span class="c1">##親ボードを設定</span>
+        <span class="n">child</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">Loggable</span><span class="o">.</span><span class="n">adjust_depth</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">)</span> <span class="c1"># 深さ調整</span>
+        <span class="k">return</span> </div>
+
+<div class="viewcode-block" id="Loggable.adjust_depth"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.adjust_depth">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">adjust_depth</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">child</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;再帰的に，属性`depth`を調整し，自分と全ての子孫に正しく深さを設定する．</span>
+<span class="sd">        </span>
+<span class="sd">        Args: </span>
+<span class="sd">               parent (Loggable) : 継ぎ木される親</span>
+
+<span class="sd">               child (Loggable) : 継ぎ木する子</span>
+
+<span class="sd">        Note: </span>
+<span class="sd">               次のように処理を行う: </span>
+
+<span class="sd">               * 木 t が整合的な深さ番号づけをもつとは，(i) `$depth(t.root) \ge 0$`，かつ，(ii) 根以外のノード$v$に対して $PropDepth(v.parent, v) &lt;=&gt; depth(v) = depth(v.parent) + 1$が成立する．</span>
+<span class="sd">               * 既存の親木と子木のすべては，整合的な深さ番号づけをもつと仮定する．</span>
+<span class="sd">               * ノード$u$にノード$v$を継ぎ木する場合に，性質$PropDepth(u, v)$が成立すれば何もしない．成立しなければ，$depth(v) := depth(v.parent) + 1$を実行し，$v$の全ての子$w in v.children()$に対して，$PropDepth(v, w)$の成立を検査する．</span>
+<span class="sd">          &quot;&quot;&quot;</span>
+        <span class="c1">#print(f&#39;{ &quot;| &quot;*dep }{ X.myinfo()} \tdepth={ X.depth }&#39;)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">((</span><span class="n">parent</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">)),</span>
+                   <span class="sa">f</span><span class="s1">&#39;parent must be a Loggable!&#39;</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">((</span><span class="n">child</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">)),</span>
+                   <span class="sa">f</span><span class="s1">&#39;child must be a Loggable!&#39;</span><span class="p">)</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">((</span><span class="n">parent</span><span class="o">.</span><span class="n">depth</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span>
+                    <span class="nb">type</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">depth</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)),</span>
+                   <span class="sa">f</span><span class="s1">&#39;parent.depth must be valid!: it=</span><span class="si">{</span> <span class="n">parent</span><span class="o">.</span><span class="n">depth</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">depth</span> <span class="o">==</span> <span class="n">parent</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">pass</span> 
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="c1">#親から子へ深さを引き継ぐ</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="n">parent</span><span class="o">.</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span>
+            
+            <span class="c1">#すべての子に対して，再帰的に処理を行う</span>
+            <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">child</span><span class="o">.</span><span class="n">children</span><span class="p">():</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">child1</span> <span class="o">=</span> <span class="n">value</span>
+                <span class="n">Loggable</span><span class="o">.</span><span class="n">adjust_depth</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">child</span><span class="p">,</span> <span class="n">child</span><span class="o">=</span><span class="n">child1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span> 
+        <span class="k">return</span></div>
+
+    <span class="c1">#=====</span>
+    <span class="c1"># 子のリスト</span>
+    <span class="c1">#=====</span>
+
+    <span class="c1"># exp 基本：子を追加する</span>
+<div class="viewcode-block" id="Loggable.put"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.put">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">trans</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> 
+        <span class="sd">&quot;&quot;&quot;子を追加する．</span>
+<span class="sd">        </span>
+<span class="sd">        Args: </span>
+<span class="sd">             trans (cairo.Matrix) : 自座標における子の配置を指示する変換行列．原点にある子を所望の場所に配置するためのアフィン変換を表す．</span>
+<span class="sd">        </span>
+<span class="sd">             child (Board): 子として追加するBoardオブジェクト</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">             (Board) : 追加した子</span>
+<span class="sd">         </span>
+<span class="sd">        Example:: </span>
+<span class="sd">         </span>
+<span class="sd">               root = Canvas()</span>
+<span class="sd">               child = root.put(Board())</span>
+<span class="sd">               child = parent.put(trans=Translate(x=1, y=2), Rectangle())</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">_vars_put_</span><span class="p">(</span><span class="n">board</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">kw</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">kwargs</span><span class="o">=</span><span class="nb">vars</span><span class="p">(</span><span class="n">board</span><span class="p">),</span>
+                              <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;cmd&#39;</span><span class="p">,</span><span class="s1">&#39;depth&#39;</span><span class="p">,</span><span class="s1">&#39;verbose&#39;</span><span class="p">])</span>
+        <span class="c1">#子の型チェック</span>
+        <span class="n">com</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">child</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">),</span>
+                   <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span><span class="si">}</span><span class="s1">.put(): child must be a Loggable!: </span><span class="si">{</span><span class="n">child</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> 
+        <span class="c1"># 親子関係の管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_child</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+        
+        <span class="c1"># 子を追加する</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_children_</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">children_</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_children_</span><span class="p">:</span>
+            <span class="n">com</span><span class="o">.</span><span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;cannot add more than max_children_=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_children_</span><span class="si">}</span><span class="s1">!&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">child</span><span class="o">.</span><span class="n">ord_</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">children_</span><span class="p">)</span>      <span class="c1">#子ID</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">children_</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">trans</span><span class="p">,</span> <span class="n">child</span><span class="p">))</span> <span class="c1">#子リスト</span>
+            
+        <span class="c1">#ログ</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">repo</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;=&gt; added: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span><span class="si">}</span><span class="s1">.put(): trans=</span><span class="si">{</span><span class="n">trans</span><span class="si">}</span><span class="s1"> child=</span><span class="si">{</span> <span class="n">child</span> <span class="si">}</span><span class="s1"> with vars=</span><span class="si">{</span> <span class="n">child</span><span class="o">.</span><span class="n">vars</span><span class="p">()</span> <span class="si">}</span><span class="s1">...&#39;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">child</span> <span class="c1">#Do not change!</span></div>
+
+     <span class="c1"># # exp 基本：子を追加する</span>
+     <span class="c1"># def put_holder(self, holder=None): </span>
+     <span class="c1">#      &quot;&quot;&quot;子を追加する．</span>
+          
+     <span class="c1">#      Args: </span>
+     <span class="c1">#           holder (LoggableHolder): 子として追加するクラスLoggableHolder（の部分クラス）のオブジェクト</span>
+
+     <span class="c1">#      Returns:</span>
+     <span class="c1">#           (LoggableHolder) : 追加した子ホルダー</span>
+     <span class="c1">#      &quot;&quot;&quot;</span>
+     <span class="c1">#      #ホルダーの型チェック</span>
+     <span class="c1">#      com.ensure(holder != None and isinstance(holder, LoggableHolder))</span>
+          
+     <span class="c1">#      #子の管理</span>
+     <span class="c1">#      ## 型チェック</span>
+     <span class="c1">#      child = holder.get_child()</span>
+     <span class="c1">#      com.ensure(child != None and isinstance(child, Loggable),</span>
+     <span class="c1">#                 f&#39;{self.myinfo()}.put(): child must be a Loggable!: {child}&#39;) </span>
+     <span class="c1">#      ## 親子関係の管理</span>
+     <span class="c1">#      self.register_child(child)</span>
+          
+     <span class="c1">#      # 子ホルダを追加する</span>
+     <span class="c1">#      com.ensure(self.max_children_ &gt;= 0 and len(self.children_) &gt;= self.max_children_, </span>
+     <span class="c1">#                 f&#39;cannot add more than max_children_={self.max_children_}!&#39;)</span>
+     <span class="c1">#      child.ord_ = len(self.children_)      #子に自分の順位を設定する</span>
+     <span class="c1">#      self.children_.append(holder) #子リスト</span>
+          
+     <span class="c1">#      #</span>
+     <span class="c1">#      if self.verbose: self.repo(msg=f&#39;=&gt; added: {self.myinfo()}.put(): holder={holder} with vars={ child.vars() }...&#39;)</span>
+          
+     <span class="c1">#      return holder #Do not change!</span>
+
+    
+    <span class="c1">##Override</span>
+<div class="viewcode-block" id="Loggable.children"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.children">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">children</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;子エントリの並び children を返す．ここに，子エントリvalue = (trans, child) は，変換 trans と子オブジェクトchildの対である．</span>
+<span class="sd">          </span>
+<span class="sd">        Returns: </span>
+<span class="sd">             list: 子エントリvalue = (trans, child) のリスト</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">children_</span>  <span class="c1">##ダミー：子クラスでOverrideすること</span></div>
+
+        <span class="c1"># idx = 0</span>
+        <span class="c1"># for trans, child in self.children_:</span>
+        <span class="c1">#     #子の型チェック</span>
+        <span class="c1">#     com.ensure(isinstance(child, BoardBase),</span>
+        <span class="c1">#                &#39;child must be a subclass of BoardBase!: {child}&#39;)</span>
+        <span class="c1">#     child_box = child.get_box()</span>
+        <span class="c1">#     triple = trans, child, child_box</span>
+        <span class="c1">#     yield idx, triple</span>
+        <span class="c1">#     idx += 1</span>
+        
+    <span class="c1">##Override</span>
+<div class="viewcode-block" id="Loggable.children_enumerated"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.children_enumerated">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">children_enumerated</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;添字と子エントリの対`idx, value`の並び children を返す．</span>
+<span class="sd">        現在は，`trans, child = value`である．部分クラスで上書きする．</span>
+
+<span class="sd">        Returns: </span>
+<span class="sd">             list: 子オブジェクトのリスト</span>
+<span class="sd">          </span>
+<span class="sd">        Notes : </span>
+<span class="sd">             読み出し`idx, value = children_enumerated()`と書き込み`children_replace(idx, value)`を対にして用いる．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">children_</span><span class="p">)</span>  <span class="c1">##ダミー：子クラスでOverrideすること</span></div>
+
+        
+    <span class="c1">#=====</span>
+    <span class="c1"># タグ</span>
+    <span class="c1">#=====</span>
+<div class="viewcode-block" id="Loggable.getTags"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.getTags">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">getTags</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;タグ文字列のリストを返す．</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (list(str)) : タグ文字列のリスト</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span></div>
+      
+<div class="viewcode-block" id="Loggable.addTag"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.addTag">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">addTag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tags</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;タグ文字列を追加する．</span>
+<span class="sd">        Args: </span>
+<span class="sd">             tags (str) : タグ文字列．任意のグルーピングに用いる．</span>
+<span class="sd">          </span>
+<span class="sd">        Returns:</span>
+<span class="sd">             (Loggable) : 自分自身．いわゆる&#39;cascade object call interface&#39; のため．</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_sequence_type</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="n">elemtype</span><span class="o">=</span><span class="nb">str</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">a_tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">a_tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">):</span> 
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a_tag</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">panic</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;tags=</span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s1"> must have as type str or list(str))!: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="c1">#for cascade object interface</span></div>
+      
+    <span class="c1">#=====</span>
+    <span class="c1"># ログ出力</span>
+    <span class="c1">#=====</span>
+<div class="viewcode-block" id="Loggable.repo"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.repo">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">repo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">isChild</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;入れ子深さを考慮したレポート文字列を出力する．</span>
+<span class="sd">        </span>
+<span class="sd">        Args: </span>
+<span class="sd">             dep=0 (int): 入れ小深さ</span>
+
+<span class="sd">             msg=None (str):  出力する文字列</span>
+
+<span class="sd">             header=True (str):  出力するヘッダー文字列．ふつうは関数名 &#39;methodname&#39;</span>
+
+<span class="sd">             file (outstream): 出力ストリーム．デフォールトsys.stderr</span>
+
+<span class="sd">        Examples::</span>
+
+<span class="sd">                self.repo(depth, msg=f&#39;.send_draw: cmd={cmd} kwargs={kwargs1}&#39;)</span>
+<span class="sd">         &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;warning: common.repo: msg=&quot;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1"> (type=</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span><span class="si">}</span><span class="s1">)&quot; must be str!&#39;</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dep_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dep_</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">isChild</span><span class="p">:</span>
+            <span class="n">dep_</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">dep_</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;warning: common.py.repo: dep_=</span><span class="si">{</span> <span class="n">dep_</span> <span class="si">}</span><span class="s1"> must be of int type!&#39;</span><span class="p">)</span>     
+        <span class="n">h</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span> <span class="s2">&quot;| &quot;</span> <span class="o">*</span> <span class="n">dep_</span> <span class="si">}</span><span class="s1">&#39;</span>    <span class="c1">#入れ小深さに対応する柱文字列を作成</span>
+        <span class="k">if</span> <span class="n">header</span><span class="p">:</span> 
+            <span class="n">h</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;@</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span> <span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)):</span>
+            <span class="n">h</span> <span class="o">+=</span> <span class="s1">&#39;: &#39;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">h</span><span class="si">}{</span><span class="n">msg</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span> </div>
+
+    <span class="c1">##=====</span>
+    <span class="c1">## 表示</span>
+    <span class="c1">##=====</span>
+<div class="viewcode-block" id="Loggable.dump"><a class="viewcode-back" href="../../board.html#board.loggable.Loggable.dump">[ドキュメント]</a>    <span class="k">def</span> <span class="nf">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dep</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Loggableオブジェクトの構造を印刷する．</span>
+
+<span class="sd">        Args: </span>
+<span class="sd">             B (Loggable) : ボードオブジェクトの根</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span> <span class="s2">&quot;| &quot;</span><span class="o">*</span><span class="n">dep</span> <span class="si">}{</span> <span class="bp">self</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span><span class="si">}</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">+</span>
+              <span class="sa">f</span><span class="s1">&#39; depth=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">depth</span> <span class="si">}</span><span class="s1">&#39;</span><span class="o">+</span><span class="sa">f</span><span class="s1">&#39; ord_=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">ord_</span> <span class="si">}</span><span class="s1">&#39;</span>
+              <span class="sa">f</span><span class="s1">&#39; verbose=</span><span class="si">{</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">getTags</span><span class="p">()</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span> 
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; tags=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">getTags</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">pair</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">children_enumerated</span><span class="p">():</span>
+            <span class="n">trans</span><span class="p">,</span> <span class="n">child</span> <span class="o">=</span> <span class="n">pair</span> <span class="c1">#分解</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">Loggable</span><span class="p">):</span>
+                <span class="n">child</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dep</span><span class="o">=</span><span class="n">dep</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+    <span class="k">pass</span> </div>
+
+<span class="c1">##=====</span>
+<span class="c1">## 表示</span>
+<span class="c1">##=====</span>
+<div class="viewcode-block" id="dump_board"><a class="viewcode-back" href="../../board.html#board.loggable.dump_board">[ドキュメント]</a><span class="k">def</span> <span class="nf">dump_board</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dep</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Loggableオブジェクトの構造を印刷する．</span>
+
+<span class="sd">     Args: </span>
+<span class="sd">          B (Loggable) : ボードオブジェクトの根</span>
+<span class="sd">     &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span> <span class="s2">&quot;| &quot;</span><span class="o">*</span><span class="n">dep</span> <span class="si">}{</span> <span class="n">B</span><span class="o">.</span><span class="n">myinfo</span><span class="p">()</span><span class="si">}</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">+</span>
+          <span class="sa">f</span><span class="s1">&#39; depth=</span><span class="si">{</span> <span class="n">B</span><span class="o">.</span><span class="n">depth</span> <span class="si">}</span><span class="s1">&#39;</span><span class="o">+</span><span class="sa">f</span><span class="s1">&#39; ord_=</span><span class="si">{</span> <span class="n">B</span><span class="o">.</span><span class="n">ord_</span> <span class="si">}</span><span class="s1">&#39;</span>
+          <span class="sa">f</span><span class="s1">&#39; verbose=</span><span class="si">{</span> <span class="n">B</span><span class="o">.</span><span class="n">verbose</span> <span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">B</span><span class="o">.</span><span class="n">getTags</span><span class="p">()</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span> 
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39; tags=</span><span class="si">{</span><span class="n">B</span><span class="o">.</span><span class="n">getTags</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">B</span><span class="o">.</span><span class="n">children_enumerated</span><span class="p">():</span>
+        <span class="n">trans</span><span class="p">,</span> <span class="n">child</span> <span class="o">=</span> <span class="n">pair</span> <span class="c1">#分解</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">B</span><span class="p">):</span>
+            <span class="n">dump_board</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">dep</span><span class="o">=</span><span class="n">dep</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span></div>
+
+<span class="c1">## EOF</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Hiroki Arimura, Hokkaido University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
