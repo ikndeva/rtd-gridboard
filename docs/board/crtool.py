@@ -71,6 +71,8 @@ import kwargs as kw
 verbose = True
 
 #Cairo定数
+DEFAULT_IMGTYPE=cairo.FORMAT_ARGB32, #cairoのSurface format
+
 FONT_SLANT = {
     'italic': cairo.FontSlant.ITALIC, #pycairo
     'normal': cairo.FontSlant.NORMAL, #pycairo

@@ -655,7 +655,8 @@ class Canvas(Board):
     """
     # background (string): 背景色．デバッグ用．default='skyblue', #debug
     def __init__(self,
-                 imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
+                 imgtype=crt.DEFAULT_IMGTYPE, #cairoのSurface format
+                 # imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
                  format="pdf",   #出力ファイルフォーマット（拡張子 pdf, png）
                  outfile="out",  #出力ファイル名（拡張子を除く）
                  imagesize='XGA',#初期の画像サイズ
