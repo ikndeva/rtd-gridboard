@@ -19,9 +19,12 @@ import math
 import numpy as np
 import random 
 import copy 
+from typing import NamedTuple
 # import inspect
 # import cairo 
-from typing import NamedTuple
+
+import os #for rtd
+sys.path.insert(0, os.path.abspath('../board/')) #for rtd
 
 import common as com
 import kwargs as kw
