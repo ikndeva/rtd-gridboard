@@ -24,7 +24,7 @@ import copy
 # import cairo 
 from typing import NamedTuple
 
-sys.path.insert(0, os.path.abspath('../board/'))
+# sys.path.insert(0, os.path.abspath('../board/'))
 
 import common as com
 import kwargs as kw
