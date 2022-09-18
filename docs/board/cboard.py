@@ -15,6 +15,7 @@ DEFAULT_COLOR_BORDER_INNER = 'red' (str): デフォールトの境界色（内�
 DEFAULT_COLOR_BORDER_OUTER = 'blue' (str): デフォールトの境界色（外側）
 """
 import sys
+import os 
 import math 
 import numpy as np
 import random 
