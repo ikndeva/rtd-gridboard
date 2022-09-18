@@ -36,14 +36,6 @@ board.crtool module
    :undoc-members:
    :show-inheritance:
 
-board.help module
------------------
-
-.. automodule:: board.help
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 board.kwargs module
 -------------------
 
