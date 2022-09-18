@@ -19,8 +19,8 @@ import math
 import numpy as np
 import random 
 import copy 
-import inspect
-import cairo 
+# import inspect
+# import cairo 
 from typing import NamedTuple
 
 import common as com
