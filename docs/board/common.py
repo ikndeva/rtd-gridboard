@@ -27,6 +27,13 @@ debug=False
 #=====
 
 def log(msg, outs=sys.stderr):
+    """標準関数print(msg)のラッパー．出力ストリームoutsを与えるとそこへ，指定がなければstd.errへ，print(msg)の出力を書き込む．
+
+    Args: 
+         msg (str) : 出力する文字列
+
+         outs (出力ストリーム) : 出力先．default=sys.stderr.
+    """
      print(f'{ msg }', file=outs)
 
 def panic(msg, outs=sys.stdout):
@@ -127,8 +134,9 @@ def is_sequence_type(L, elemtype=None, verbose=False):
           ## 全ての要素が要素型を満たした
           return True
 
-def normalize_elemtype(elemtype=None): 
-     ## 引数テスト
+def _normalize_elemtype(elemtype=None): 
+     """関数is_typeof()の補助関数．受け取った型または型リストelemtypeを，型リストに変換して返す．
+     """
      elemtypes_ = None ## 作業用：a list for a union type
      if elemtype == None:
           panic(f'normalize_elemtype: elemtype must be non-None!')
@@ -155,7 +163,7 @@ def is_typeof(obj, elemtype=None):
        (bool) : オブジェクトobjが，elemtypeの型指定を満たすならば`True`を, そうでなければ`False`を返す．
      """
      ## 引数テスト: 型リストに正規化する．単一型tは，単一元リスト(t)とする．
-     elemtypes_ = normalize_elemtype(elemtype=elemtype)
+     elemtypes_ = _normalize_elemtype(elemtype=elemtype)
      
      ## 要素型をテストする
      for ty in elemtypes_: 

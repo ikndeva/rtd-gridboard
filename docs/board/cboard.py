@@ -767,6 +767,8 @@ class WrapperBoard(BoardBase):
     """ラッパーのクラス．唯一の子をもち，指定された以外のメソッド呼び出しを子に転送する．
 
     Args: 
+          child (BoardBase) : 子として保持するBoardBaseオブジェクト．
+
           **kwargs : 他のキーワード引数．上位クラスに渡される．
 
     Attributes: 
