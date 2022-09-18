@@ -1,0 +1,34 @@
+#!/usr/bin/env python3 
+# coding: utf_8
+# gridboard.py
+# 利用可能な色表を表示する
+import sys
+from PIL import ImageColor, Image, ImageDraw
+
+cmap = ImageColor.colormap
+n = len( cmap )
+
+cols        = 4
+rows        = ((n-1) // cols) +1
+cellHeight  = 30
+cellWidth   = 170
+imgHeight   = cellHeight * rows
+imgWidth    = cellWidth * cols
+
+im = Image.new( "RGB", (imgWidth,imgHeight), (0,0,0) )
+dr = ImageDraw.Draw( im )
+
+for idx, name in enumerate( cmap ):
+    y0 = cellHeight * (idx // cols)
+    y1 = y0 + cellHeight
+    x0 = cellWidth * (idx % cols)
+    x1 = x0 + (cellWidth / 4)
+
+    dr.rectangle( [ x0, y0, x1, y1 ], fill=name, outline='black' )
+    dr.text( ( x1+1, y0+10 ), name, fill='white' )
+
+im.show()
+#im.save( 'color_chart.png' )
+
+
+

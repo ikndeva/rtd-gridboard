@@ -1,0 +1,1207 @@
+# coding: utf_8
+# gridboard.py
+# 画盤モジュール
+"""画盤モジュール
+
+Attributes: 
+
+    DEFAULT_PPT = 720 (int): デフォールトの解像度
+    DEFAULT_LINE_WIDTH = 1 (float): デフォールトの辺幅
+    DEFAULT_COLOR_BORDER_INNER = 'red' (str): デフォールトの境界色（内側）
+    DEFAULT_COLOR_BORDER_OUTER = 'blue' (str): デフォールトの境界色（外側）
+
+"""
+import sys
+import math 
+import numpy as np
+import copy 
+import inspect
+from typing import NamedTuple
+import vector as vec 
+import common as com
+import kwargs as kw
+import pilfont 
+import pilimage as pim
+
+#Pillow package
+import PIL as pil
+
+DEFAULT_PPI = 720 
+DEFAULT_LINE_WIDTH = 1 
+DEFAULT_COLOR_BORDER_INNER = 'red'
+DEFAULT_COLOR_BORDER_OUTER = 'blue'
+
+##=====
+## ヘルパー関数： 座表と座表変換
+##=====
+
+#Args:
+DEFAULT_GRID_LEN_PT = 2 * pilfont.DEFAULT_FONTSIZE_PT
+EMPTY_RECT = ((0,0), (0,0))
+
+## curved_lineのためのヘルパー
+#const 
+EPS_CURVED_LINE_HEIGHT = 0.001
+
+def too_small_curvature(pa=None, pb=None, height=None):
+    """線分(pa, pb) を繋ぎ，高さheightの円弧の曲率が，
+    しきい値より小さいときTrueを，そうでないときFalseを返す．
+    """
+    len = vec.l2norm(vec.sub(pb, pa))  ##線分 pa-pbの長さ
+    if height < 0: height = -1*height  ##正の値にする
+    return (height <= EPS_CURVED_LINE_HEIGHT*len)
+
+def compute_mid_and_top(pa=None, pb=None, height=None):
+    if pa==None or pb==None or height==None:
+        com.panic(f'none of pa, pb, and height must not be None!')
+    if too_small_curvature(pa=pa, pb=pb, height=height):
+        com.panic(f'height is too small! height={height}')
+    pm = vec.point_mid(pa, pb)  ## pm:中点
+    unit_pa_to_pb = vec.unit_vector(vec.sub(pb, pa))
+    unit_pm_to_pt = vec.rotate_by_rad(unit_pa_to_pb, -0.5*math.pi)
+    pt = vec.add(pm,
+                 vec.scale(unit_pm_to_pt, height)) ## 円弧の頂上の点
+    return pm, pt, unit_pm_to_pt
+
+#=====
+# 座標変換
+# - パラメータ:  (origin, ratio)
+#=====
+
+#座標変換の適用
+def trans_apply_point(xy=None, matrix=None):
+    """平行移動xyと拡大率matrix.ratioで決まる座標変換を点に適用する
+    Args: 
+    	xy (vector): 移動ベクトル
+
+    	matrix (): 
+    """
+    if not matrix: 
+        return xy
+    else:
+        return vec.add(matrix.origin, vec.scale(xy, matrix.ratio)) 
+    
+# #座標変換の適用
+# def trans_apply_point(xy=None, origin=None, ratio=None):
+#     """座標変換を点に適用する"""
+#     return vec.add(origin, vec.scale(xy, ratio)) #親座標
+    
+#変換を計算
+def calculate_ratio(xy0, xy1):
+    """
+    変換を計算の場合1: xy0が包含長方形として与えられている時
+    Args:
+    ----------
+    xy0, xy1: point or [point, ...] - 親座標系と子座標系での長方形
+    ratio: 数値対 - 子座標系から親座標系への拡大率
+    """ 
+    com.ensure(vec.is_rect(xy0) or vec.is_point(xy0), f'xy0={xy0} must be a rect or a point')
+    com.ensure(vec.is_rect(xy1) or vec.is_point(xy1), f'xy1={xy1} must be a rect or a point')
+    size0 = vec.normalize_shape(xy0)
+    size1 = vec.normalize_shape(xy1)
+    #処理
+    _ratio = [1,1] #変更するのでタプルでなくリストにする
+    for dim in (0,1): 
+        if size1[dim]==0: #ゼロなら比率1.0のまま
+            _ratio[dim] = 1.0
+        else: #その軸の比率を求める．
+            _ratio[dim] = size0[dim]/size1[dim] 
+    return tuple(_ratio)
+    
+#座標変換パラメータの計算
+def trans_make(xy_dst=None, xy_src=None, verbose=False):
+    """座標変換のパラメータを計算する．
+
+    Args:
+    	xy_dst (list): 長方形 
+    	xy_src (list): 長方形 
+    	verbose (bool): ログ出力のフラグ
+
+    Returns: 
+    	(origin, ratio): 数値対 - 座標変換パラメータ    
+
+    Example: 
+
+    	例::
+
+    		rect0=[(0,0), (10, 10)]
+    		rect1=[(0,0), (1,1)]
+        	self.matrix_ex = trans_make(xy_dst=rect0, xy_src=rect1)
+
+    """
+    if verbose: print(f'@trans_make: xy_dst={xy_dst} xy_src={xy_src}')
+    #正規化
+    if not xy_dst:
+        xy_dst = [(0,0)]
+    elif vec.is_point(xy_dst):
+        xy_dst = [xy_dst]
+    if not xy_src:
+        xy_src = [(0,0)]
+    elif vec.is_point(xy_src):
+        xy_src = [xy_src]
+    com.ensure(vec.is_point_seq(xy_dst), 'wrong xy_dst={xy_dst}!')
+    com.ensure(vec.is_point_seq(xy_src), 'wrong xy_src={xy_src}!')
+    #並行移動の計算
+    com.ensure(len(xy_dst) >= 1, 'null xy_dst={xy_dst}!')
+    com.ensure(len(xy_src) >= 1, 'null xy_src={xy_src}!')
+    dst, src = xy_dst[0], xy_src[0]
+    com.ensure(vec.is_point(dst), 'dst={dst} must be a point!')
+    com.ensure(vec.is_point(src), 'src={src} must be a point!')
+    origin = vec.sub(dst, src)   
+    #拡大率の計算
+    if len(xy_dst)==2 and len(xy_src)==2: 
+        ratio = calculate_ratio(xy_dst, xy_src)  
+    else:
+        ratio = (1.0, 1.0)
+    mat = TransMatrix(origin=origin, ratio=ratio)
+    if verbose: print(f'@trans_make: gen mat={mat}')
+    return mat
+
+#paddingとmarginの処理
+def make_bboxes_(shape=None, bb_child=None, padding=None, margin=None,
+                depth=0, verbose=False):
+    """
+    描画矩形の一連の包含矩形（bounding box, BB）を求めるメソッドarrangeの副手続き．
+    その過程で，余白指定の形式の検査と正規化を行なう．
+
+    Args: 
+    	shape=None (vec2)	: 整数対(ix,iy)であり，矩形((0,0), (ix,iy))を表す．
+  	bb_child=None (rect)	: 点対(p,q)．必須．
+  	padding=None (obj)	: 描画矩形の内側の余白（パディング）の指定．マージン指定形式（下記）で与える．
+  	margin=None (obj)	: 描画矩形の外側の余白（マージン）の指定．マージン指定形式（下記）で与える．
+        depth=0	: ログ出力の深さ
+  	verbose (bool)	: ログ出力のフラグ
+
+    Returns: 
+    	bbi, bbb, bbo
+
+    * 包含矩形領域は，内側から外側に包含関係にある3つの矩形である内側矩形(bb_inner, BBI)，描画矩形(bb_border, BBB)，外側矩形(bb_outer, BBO)からなる．
+
+    Notes: 
+
+    * 引数のマージン指定は，次のいずれかの形式をとる: 
+    	+ margin:  4辺の共通マージンを表す一つの正数．
+    	+ (x_margin, y_margin) : x軸とy軸それぞれのマージンを表す正数対 (vec2)．
+    	+ (left_margin, top_margin, right_margin, bottom_margin): 4辺のマージンの組を表す4つの正数の組．完全マージン指定という．
+    	+ (p, q) = ((left_margin, top_margin), (right_margin, bottom_margin)):  点対で表わした完全マージン指定．
+
+    * 返り値は，包含関係 BBI ⊆ BBB ⊆ BBO を満たす次の3つの包含矩形の組（レコード）を表す`BBInfo`オブジェクトである：
+
+    	- 内側矩形 BBI: 子たちの（最小）包含矩形．描画オブジェクトの子たちからみた空き領域になる．
+    	- 境界矩形 BBB: 描画オブジェクトの描画境界．描画オブジェクトの外観の描画を決めるが，配置には無関係である．
+    	- 外側矩形 BBO: 描画オブジェクトの包含矩形．描画オブジェクトの親からみた外形になる．
+
+    TODO: 
+
+    現在の実装は，包含矩形包含関係 BBI ⊆ BBB ⊆ BBO が次の制約を満たすように定めている．
+
+    境界条件
+    * 描画オブジェクトの形状 `shape = (ix,iy)` が与えられているとき: `bbb == [(0,0), shape]`を満たす．すなわち，左上角を原点(0,0)に合わせた位置(p=(0,0), q)におく．
+    * 子たちの包含矩形`bb_child`が既定義のとき: `bbi == bb_child`を満たす．
+
+    隣接条件
+    * BBOの外側余白（margin）分だけ内側に，BBBが接する．
+    * BBBの内側余白（padding）分だけ内側に，BBIが接する．
+
+    境界条件．次のどれかの情報が与えられると，包含長方形は一意に決まる．
+    * 外側包含矩形：親から得られた包含矩形を使う．
+    * 境界包含矩形：描画領域の形状矩形を使う．
+    * 内側包含矩形：子リストから得られた，子たちの包含矩形`bb_child`を使う．
+
+    """
+    com.ensure(bb_child, 'bb_child is None!')
+    com.ensure(vec.is_rect(bb_child), 'bb_child={bb_child} must be defined!')
+    
+    #正規化
+    EMPTY_MARGIN = ((0,0), (0,0))		#output_kind='point_pair'
+    if padding:
+        padding = vec.normalize_margin(padding, output_kind='point_pair')
+    else:
+        padding = EMPTY_MARGIN
+    
+    if margin:
+        margin  = vec.normalize_margin(margin, output_kind='point_pair')
+    else:
+        margin = EMPTY_MARGIN
+    
+    #検査
+    if shape and padding:
+        #内側矩形のサイズが正になるよう，内側余白が大きすぎないか検査する．
+        padsum_ = vec.add(padding[0], padding[1])
+        com.ensure(vec.le(padsum_, shape),
+                   f'padding sum={padsum_} is larger than shape={shape}!')
+    
+    #形状shapeの有無による処理
+    if shape: 
+        #自分の形状が与えられているとき
+        com.ensure(vec.is_point(shape), f'shape={shape} must be a point')
+        #先に外側を決め，次に内側を決める
+        bbb = [(0,0), copy.copy(shape)]
+        bbi = [vec.add(bbb[0], padding[0]), vec.sub(bbb[1], padding[1])]
+        bbo = [vec.sub(bbb[0], margin[0]), vec.add(bbb[1], margin[1])]
+    else:
+        #自分の形状が与えられていないとき
+        #先に内側を決め，次に外側を決める
+        bbi = copy.copy(bb_child)
+        bbb = [vec.sub(bbi[0], padding[0]), vec.add(bbi[1], padding[1])]
+        bbo = [vec.sub(bbb[0], margin[0]), vec.add(bbb[1], margin[1])]
+    com.ensure(bbi, 'bbi is None!')
+    com.ensure(bbb, 'bbb is None!')
+    com.ensure(bbo, 'bbo is None!')
+    bbinfo = BBInfo(bbi=bbi, bbb=bbb, bbo=bbo)
+    #print(f'debug: make_bboxes: self.bbinfo={ bbinfo }')
+    return bbi, bbb, bbo
+    # return bbinfo
+
+
+##======
+## 配置：ボード位置の微調整
+##======
+
+def align_origin(xy):
+    """点または矩形xyを受け取り，最初の点xy0と，点xy0が原点(0,0)に来るよう平行移動したxy1を返す"""
+    if is_point(xy):
+        xy0 = xy
+        xy1  = (0,0)
+    elif is_point_seq(xy):
+        xy0 = xy[0]
+        xy1 = [(0,0), vec.sub(xy[1], xy[0])]
+    else:
+        panic(f'xy={xy} must be a point or a point list!')
+    return xy0, xy1
+
+def align_x(align):
+    if len(align) < 1:
+        com.panic(f'align must contain the 1-dim alignment: aling="{align}"')
+    xa = align[0]
+    if xa == 'l' or xa == 'm' or xa == 'r':
+        return xa
+    else: 
+        return None
+
+def align_y(align):
+    if len(align) < 2:
+        com.panic(f'align must contain the 1-dim alignment: aling="{align}"')
+    ya = align[1]
+    if ya == 'a' or ya == 'm' or ya == 'b':
+        return ya
+    else: 
+        return None
+
+def align_xy(shape=None, parent_shape=None, align='mm'):
+    ## x-alignment
+    dx = parent_shape[0] - shape[0]
+    dy = parent_shape[1] - shape[1]
+    if dx < 0 or dy < 0:
+        com.panic('The child shape must be smaller than the parent shape!:'
+              +f'child width={shape}, parent={parent_shape}')
+    ## x-axis
+    ax = align_x(align)
+    if ax=='m'  : x = dx/2.0
+    elif ax=='l': x = 0
+    elif ax=='r': x = dx
+    else: x = dx/2.0
+    ## x-axis
+    ay = align_y(align)
+    if ay=='m'  : y = dy/2.0
+    elif ay=='a': y = 0
+    elif ay=='b': y = dy
+    else: y = dy/2.0
+    ## 
+    return (x, y)
+
+def wrap_canvas(shape_board, margin=0, align=None):
+    ## warning: align feature is not used
+    shape = vec.ceil( vec.add(shape_board, (2*margin, 2*margin)))
+    xy=(margin, margin)
+    return xy, shape
+
+
+##=====
+# Old: 描画対象の矩形のクラス
+##=====
+
+
+DISPLAY_SHAPE = {
+    'QVGA': (320, 240),
+    'VGA' : (640, 480), 
+    'SVGA': (800, 600), 
+    'XGA' : (1024, 768), 
+    'WXGA': (1280, 800), 
+    'UXGA': (1600, 1200), 
+    'QXGA': (2048, 1536), 
+}
+
+#=====
+# 包含長方形 bb
+#=====
+class BBInfo(NamedTuple):
+    """包含長方形の情報 bounding box infomation. 
+
+    Attributes:
+
+    	bbi (list): 内側の包含矩形（bb_inner）
+
+    	bbb (list): 境界の包含矩形（bb_border）
+
+    	bbo (list): 外側の包含矩形（bb_outer）
+    	
+    """
+    bbi : list  #bb_inner
+    bbb : list  #bb_border
+    bbo : list  #bb_outer
+
+#=====
+# 包含長方形 bb
+#=====
+class TransMatrix(NamedTuple): 
+    """変換行列情報．
+
+    Args: 
+    	origin (point): 並行移動の二次元ベクトル (x,y)．Default (0.0, 0.0)
+    	ratio  (float pair): 拡大の二次元ベクトル (ex,ey)．Default (1.0,1.0)
+    
+    Examples: 
+
+    	生成の例::
+
+    		TransMatrix(origin=(0.0, 0.0), ratio=(1.0,1.0))  
+
+    """
+    origin : float #並行移動
+    ratio  : float #拡大
+
+TRANS_IDENTITY = TransMatrix(origin=(0.0, 0.0), ratio=(1.0,1.0))    
+
+#=====
+# 画盤（board）のクラス: 座標系オブジェクト
+#=====
+class Board(com.Loggable):
+    """画盤（board）のクラス: 座標系オブジェクト
+
+    Attributes: 
+        parent (Board): 親オブジェクト
+        xy (vec(float)): 親座標系での位置決めパラメータのベクタ (x,y)．位置指定パラメータ．
+        shape (vec(int)): 親座標系での自身の領域の形状(nx, ny)．位置指定パラメータ．
+        padding (float): 内側の余白
+        margin (float): 外側の余白
+        border=None (str): 境界の色
+        border_width=None (float): 境界の線幅
+        depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+        verbose (bool): ログ出力のフラグ
+
+    Notes: 
+
+    	図の構築は次のように行う．
+
+    	* 生成後に，add(child)メソッドで，子となるBoardオブジェクトを追加する．
+    	* 描画時に，arrange()メソッドを呼び出すと，子Boardオブジェクトに再帰的に処理を行って，それらの包含矩形（bounding box, BB）を計算し，与えられた配置ポリシーに従って，それらを自身の局所座標内に配置し，さらに自身の包含矩形を計算する．
+
+    	配置ポリシーは，次のものがある．
+
+    	* 現在，実装のもの．
+    	    + (0,0)を原点とする自身の局所座標系内で，子図形を局所座標の位置に配置する（locate）．原点(0,0)とすべての子の配置を含む包含長方形を求めて，これを自身の包含長方形とする
+
+    	* Locate: 局所座標内の絶対位置指定による配置する
+    	    + (0,0)を原点とする自身の局所座標系内で，子図形を局所座標の位置に配置する（locate）．
+    	    + すべての子の配置を含む包含長方形を求めて，これを自身の包含長方形とする．包含長方形の原点（左上角）oを配置原点xyとする．
+
+    	* Pack:　一次元の軸上に子図形を順番に並べる．
+    	    + 軸方向と，直交方向ごとに，外形を与えるか，与えずに配置後パックするかを決める．軸向の配置は，パックする場合は，t (touch):互いに外周が接するのみである．外形を与える場合は，e (even): 間隔均等に, c（center）: 中心均等にならべるが選べる．
+    	    + 軸と直行方向（上下方向）には，alignmentの指定に従い，そろえて配置する．
+
+    		+ 横軸並べ（horizontal, x-axis）の場合は，直行方向（上下方向）に関して，alignmentの指示（align=a, m, b）にしたがい，次の配置揃え指定ができる： a (above): 上端揃え，m (middle):中心そろえ，b (below):下端揃え．
+
+    		+ 縦軸並べ（vertical, y-axis）の場合は，直行方向（左右方向）に関して，alignmentの指示（align=l, m, r）にしたがい，次の配置揃え指定ができる： l (left): 左端揃え，m (middle):中心そろえ，r (right):右端揃え．
+
+    	* Grid: 二次元の直行格子上に子図形を順番に並べる．
+    	    + 格子点に対する子図形の配置は，軸と直行方向（左右方向）には，子図形のアンカー点が格子点に重なるように，揃えて配置する．アンカー点は，ac in {a,m,b} x {l,m,r} の8近傍で表現する．a (above): 上端揃え，m (middle):中心そろえ，b (below):下端揃え．l (left): 左端揃え，m (middle):中心そろえ，r (right):右端揃え．
+
+    	* Circle:　Packの変種として，円周上に子図形を順番に並べる
+    	    + 軸方向に，演習座標で絶対位置を与えるか，与えずに配置後，一次元に均等間隔にパックするかを決める．
+
+    """
+
+    count = 0 #board id
+
+    def __init__(self,
+                 # depth=None, #アクセスを禁止する 
+                 parent=None, 
+                 # ratio=None, 
+                 xy=(0,0),   #user given 
+                 shape=None, #user given
+                 padding=None, 
+                 margin=None,
+                 border=None, #境界の色
+                 border_width=None, #境界の線幅
+                 dep_init=0, #生成トレース用
+                 verbose=False):
+        """画盤を初期化する
+
+        Args: 
+            parent (Board): 親オブジェクト
+            xy (vec): 親座標系での位置決めパラメータのベクタ．位置指定パラメータ．
+            shape (vec): 親座標系での自身の領域の形状．位置指定パラメータ．
+            padding (float): 内側の余白
+            margin (float): 外側の余白
+            dep_init (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+            verbose (bool): ログ出力のフラグ
+        """
+        #引数
+        super().__init__(dep_init=dep_init, verbose=verbose)
+        # self.depth = dep_init #Loggable 
+        # self.verbose = verbose #全てのBoardオブジェクトはこれをもつ
+        self.parent = parent # 親オブジェクト
+        self.xy = xy         # 位置決め指定: 一時：親座標系での位置決めパラメータ
+        self.shape = shape   # 位置決め指定: 一時：子親座標系での自身の領域の大きさ
+        self.padding = padding #内側の余白
+        self.margin  = margin  #外側の余白
+        self.border  = border  #境界の色
+        self.border_width = border_width  #境界の線幅
+
+        #トレース
+        if self.verbose:
+            self.repo(msg=f'Board.__init__(): { self.alog() }')
+        #内部変数
+        self.id = Board.count;
+        Board.count += 1
+        self.children_ = []  # 子のリスト
+
+        #座標形
+        self.matrix_in = None  # 変換行列
+        self.matrix_ex = None  # 変換行列
+        self.bb        = None  # 包含長方形
+        # self.bbinfo = None     # 補助長方形たち
+
+        #補助情報
+        self.bb_in = None 
+        self.bb_ex = None 
+        
+        return
+
+    def alog(self):
+        """位置決め関係の描画属性の値を返す．デバッグ用．
+
+        Returns: 
+        	dict: 次の属性の値を保持する辞書を返す: 'xy', 'shape', 'origin', 'ratio', 'padding', 'margin', 'bb', 'bbinfo', 'matrix', 'kwargs'. 
+        """
+        kwargs_ = kw.extract(kwargs=vars(self), keys=['xy', 'shape', 'origin', 'ratio', 'padding', 'margin', 'bb', 'bbinfo', 'matrix', 'kwargs' ])
+        return kw.reduce(kwargs_)
+
+    # 基本：子画盤の並びを返す
+    def children(self):
+        """子画盤の並び children を返す．
+
+        Returns: 
+        	list: 子オブジェクトのリスト
+        	
+        """
+        return self.children_  ##ダミー：子クラスでOverrideすること
+
+    # 基本：子を追加する
+    def add(self, child):
+        """子を追加する．
+
+        Args: 
+        	child (Board): 子として追加するBoardオブジェクト
+
+        Returns:
+        	Board: 追加した子オブジェクト. 
+        """
+        if self.verbose: 
+            self.repo(msg=f'.add(): appending a child={ child } with vars={ kw.reduce(vars(child)) }...')
+        com.ensure(isinstance(child, Board),
+                   'child={child} must be a subclass of Board!')
+        com.ensure(child.parent == None,
+                   'parent is already defined! parent={child.parent}')
+        #親子関係の管理
+        #親ボードを設定する
+        child.parent = self
+
+        #verbose
+        if self.verbose:
+            if child.verbose: 
+                child.verbose = child.verbose or self.verbose
+            else:
+                child.verbose = self.verbose
+
+        #深さを管理
+        if child.depth == None:
+            if self.depth != None:
+                child.depth = self.depth + 1
+            else:
+                child.depth = 0 
+
+        #子を追加する
+        self.children_.append(child)
+        if True:
+            self.repo(f"=> added [{child.__class__.__name__}] with  vars={ kw.extract(kwargs=vars(child), keys=['cmd','depth','verbose']) }")
+        return child 
+
+    # working 
+    # 基本：配置の計算
+    def arrange(self):
+        """配置を計算する．配置は，ボトムアップに再帰的に計算される．
+
+        Args: 
+        	depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+
+        	verbose (bool): ログ出力のフラグ
+
+        Returns: 
+        	rect: 計算済みの自身の包含矩形オブジェクト
+        """
+        if self.verbose:
+            self.repo(msg=f'Board.arrange(): { vars(self) }')
+        
+        #子供全ての包含長方形を計算する
+        bb_children = EMPTY_RECT
+        for idx, child in enumerate(self.children()):
+            com.ensure(isinstance(child, Board), 'child={child} must be a subclass of of Board!')
+            if self.verbose:
+                self.repo(isChild=True, msg=f'[{idx}] calling on {idx}-th child={ child.name() }', header=False)
+                
+            bb1 = child.arrange()
+                
+            if self.verbose: self.repo(isChild=True, msg=f'[{idx}] called => { child.name() }: { child.alog() }', header=False)
+            if bb1:
+                bb_children = vec.rect_union(bb_children, bb1)
+
+        #余白の扱い
+        padding, margin = None, None 
+        if 'kwargs' in vars(self) and self.kwargs: 
+            padding = kw.get(self.kwargs, 'padding')
+            margin  = kw.get(self.kwargs, 'margin')
+        #exp
+        bbi, bbb, bbo = make_bboxes_(shape=None, bb_child=bb_children,
+                                     padding=padding, margin=margin)
+        #内側の境界
+        if bbi:
+            self.bb_in = bbi #内側
+        else:
+            self.bb_in = [(0,0)] #等倍
+        #self.bb_in = bb_in #exp
+        
+        #外側の境界
+        if bbo:
+            self.bb_ex = bbo #外側
+        else:
+            self.bb_ex = bb_children #子の包含長方形
+        #self.bb_ex = bb_ex #exp
+            
+        #内側変換を求める
+        if not self.matrix_in: 
+            self.matrix_in = trans_make(xy_dst=self.bb_in,
+                                        xy_src=bb_children)
+        #外側変換を求める
+        if not self.matrix_ex and self.xy: 
+            self.matrix_ex = trans_make(xy_dst=self.xy,
+                                        xy_src=self.bb_ex)
+        self.bb = self.trans(self.bb_ex)
+
+        # #境界の描画
+        # if self.border: 
+        #     self.draw_bbinfo(bbox_inner=bb_in, bbox_outer=bb_ex,def
+        #                      border=self.border, width=self.border_width)
+        return self.bb 
+
+    # デバグ
+    def draw_bbinfo(self, bbox_inner=None, bbox_outer=None,
+                    border=None, border_inner=None, border_outer=None,
+                    width=None, 
+                    depth=0, verbose=None):
+        if not width:
+            width = com.DEFAULT_PEN_WIDTH
+        if self.verbose:
+            kwargs_ = { 'bbox_inner':bbox_inner, 'bbox_outer':bbox_outer, 'border':border, 'border_inner':border_inner, 'border_outer':border_outer, 'width':width, 'depth':depth, 'verbose':verbose }
+            self.repo(msg=f".draw_bbinfo: { kw.reduce(kwargs_) }")
+        if bbox_inner:
+            if not border_inner:
+                if border: border_inner = border
+                else:      border_inner = DEFAULT_COLOR_BORDER_INNER
+            self.rectangle(xy=bbox_inner, outline=border_inner, width=width, depth=depth+1)
+        if bbox_outer: 
+            if not border_outer:
+                if border: border_outer = border
+                else:      border_outer = DEFAULT_COLOR_BORDER_OUTER
+            self.rectangle(xy=bbox_outer, outline=border_outer, width=width, depth=depth+1)
+
+    # 基本：描画
+    def draw(self):
+        """トップダウンに画像を描画する．
+
+        Args: 
+        	depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+
+        	verbose (bool): ログ出力のフラグ
+
+        """
+        if self.verbose:
+            self.repo(msg=f'Board.draw: vars={ vars(self) }')
+            
+        #デバッグ
+        if self.border: 
+            self.draw_bbinfo(bbox_inner=self.bb_in, bbox_outer=self.bb_ex,
+                             border=self.border, width=self.border_width,
+                             depth=depth+1)
+        #必要なら自分の描画を行う
+        self.draw_me()
+        
+        #子の描画を行う
+        for child in self.children():
+            child.draw()
+
+    # 基本：描画命令の転送
+    def send_draw(self, cmd=None, kwargs=None):
+        """描画命令を転送する．
+        Args: 
+        	cmd (str): 命令名の文字列
+        	depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+
+        	verbose (bool): ログ出力のフラグ
+
+        """
+        if (self.verbose):
+            self.repo(msg=f"Board.send_draw: cmd={cmd} kwargs={ kwargs }")
+            
+        com.ensure(self.parent, f'board={self.name()} has no parent={self.parent}!')
+        #描画情報`xy`を座標変換し，他のすべての属性を取り出す．
+        kwargs1 = self.extract(kwargs, trans=['xy'], keys=None)
+        return self.parent.send_draw(cmd=cmd, kwargs=kwargs1)
+
+    #=====================
+    # padding and padding: begin
+    #=====================    
+    # 派生：Override
+    def draw_me(self):
+        """自分の描画を行う：サンプル"""
+        # if self.bbinfo:
+        #     bb = self.bbinfo.bbb
+        if self.bb:
+            bb = self.bb
+            if 'background' in vars(self) and self.background:
+                bb = vec.normalize_rect(xy=bb)
+                # if vec.is_point(bb):
+                #     bb = [(0,0), bb]
+                # elif vec.is_point_seq(bb):
+                #     pass
+                # else:
+                #     panic(f'bb={bb} must be a point or a point list!')
+                self.send_draw(cmd='rectangle',
+                               kwargs={ 'xy':bb,
+                                        'fill':self.background})
+
+    #=====================
+    # padding and padding: end
+    #=====================
+    # 
+    def trans_point(self, p):
+        """Boardオブジェクトの座標変換情報`self.matrix_ex`に基づき，長さと点の座標を変換する．
+
+        Args: 
+        	p (vec): 入力の点
+        	verbose (bool): ログ出力のフラグ
+
+        Returns: 
+        	vec: 変換された点 q (vec). 
+        """
+        q = trans_apply_point(p, self.matrix_in)
+        r = trans_apply_point(p, self.matrix_ex)
+        return r 
+
+    #変換
+    def trans(self, xy):
+        """Boardオブジェクトの座標変換情報`self.matrix_ex`に基づき，幾何オブジェクト xy を変換して得られた同じ型の幾何オブジェクトを返す．ただし，数値は座標変換しない．
+
+        Args: 
+        	xy (geom): 数値または，点，または点リストの幾何オブジェクト（下記）．
+        	verbose (bool): ログ出力のフラグ
+
+        Returns: 
+        	geom: 変換された幾何オブジェクト
+
+        Notes: 引数xy は次のいずれかの型の幾何オブジェクト: 
+
+        	* 数値（スカラー）．変換しない
+        	* 点（vec）．関数trans_point()で変換する
+        	* 点対，矩形，点リスト．列が含む頂点それぞれを関数trans_point()で変換する．
+        """
+        xy1 = None
+        if vec.is_number(xy): ## 数値(width)は変換しない
+            xy1 = xy  
+        elif vec.is_point(xy): ## 点の座標は変換する
+            xy1 = self.trans_point(xy)
+        elif vec.is_point_seq(xy): ## 点列の座標は変換する
+            xy1 = [ self.trans_point(po) for po in xy ]
+        if False and verbose:
+            self.repo(msg=f'.trans(): xy={xy} => xy1={xy1}', header=False)
+        return xy1
+        
+    ##キーワード引数辞書からの部分コピー
+    def extract(self, kwargs=None, keys=None, trans=None):
+        """与えられたキーワード引数辞書 kwargs から，属性リストkeysで指定された属性値を取り出した引数辞書を返す．
+        ただし，座標変換関数`xy1 = self.trans(xy)`を用いて，属性リストtrans中の幾何オブジェクトを座標変換する．
+        
+        Args: 
+        	kwargs (dict): キーワード引数辞書 kwargs 
+        	keys (list(str)): 抽出対象の属性リスト．ここから取り出した引数を取り出す．
+        	trans  (list(str)): 座標変換対象の属性リスト．引数を座標変換する．
+        	verbose (bool): ログ出力のフラグ
+
+        Retruns: 
+        	抽出対象と座標変換対象の属性を含むキーワード辞書
+        """
+        return kw.extract(kwargs=kwargs, keys=keys, trans=trans,
+                          func=lambda xy:self.trans(xy) 
+                          # , verbose=self.verbose
+                          )
+    #=====
+    # オブジェクトへの転送
+    # 以下の関数は，同名のDrawCommandオブジェクトを子として追加し，
+    # 子オブジェクトを返り値として返す. 
+    #     Args:
+    #     ----------
+    #     xy: a point or a rect region 
+    #       基本は，長方形領域[p,1]で，点qは原点o位置の長方形領域[o, q]に拡大する
+    #     ...
+    #     Returns 
+    #     ----------
+    #     child : DrawCommand - 追加された子オブジェクト
+    #=====
+    def board(self, **kwargs):
+        """指定した描画パラメータkwargsをもつBoardオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Boardオブジェクトの生成子と同一である．
+        """
+        return self.add(Board(dep_init=self.depth+1, **kwargs))
+        
+    def margin_board(self, **kwargs):
+        """指定した描画パラメータkwargsをもつMarginBoardオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Boardオブジェクトの生成子と同一である．
+        """
+        return self.add(MarginBoard(dep_init=self.depth+1, **kwargs))
+        
+    def rectangle(self, **kwargs):
+        """指定した描画パラメータkwargsをもつRectangleオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は長方形領域 で，点ならば原点位置に拡大する．
+        """
+        return self.add(DrawCommand(dep_init=self.depth+1, cmd='rectangle', **kwargs))
+        
+    def ellipse(self, **kwargs):
+        """指定した描画パラメータkwargsをもつEllipseオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は長方形領域 で，点ならば原点位置に拡大する．
+        """
+        return self.add(DrawCommand(dep_init=self.depth+1, cmd='ellipse', **kwargs))
+        
+    def line(self, **kwargs):
+        """指定した描画パラメータkwargsをもつLineオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は長方形領域 で，点ならば原点位置に拡大する．
+        """
+        return self.add(DrawCommand(dep_init=self.depth+1, cmd='line', **kwargs))
+        
+    def arc(self, **kwargs):
+        """指定した描画パラメータkwargsをもつArcオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は長方形領域 で，点ならば原点位置に拡大する．
+        """
+        return self.add(DrawCommand(dep_init=self.depth+1, cmd='arc', **kwargs))
+        
+    def line(self, **kwargs):
+        """指定した描画パラメータkwargsをもつLineオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は長方形領域 で，点ならば原点位置に拡大する．
+        """
+        return self.add(DrawCommand(dep_init=self.depth+1, cmd='line', **kwargs))
+        
+    def dot(self, **kwargs):
+        """指定した描画パラメータkwargsをもつDotオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は点．サイズは`width`で与える．サイズ不変図形．
+        """
+        return self.add(CommandDot(dep_init=self.depth+1, cmd='dot', **kwargs))
+        
+    def text(self, **kwargs):
+        """指定した描画パラメータkwargsをもつTextオブジェクトを生成し，子として追加し，返り値として返す．
+
+        - キーワードパラメータは，Pillowの対応するオブジェクトに準ずる．
+        - キーワード引数 xy は点．サイズは`width`で与える．サイズ不変図形．
+        """
+        return self.add(CommandText(dep_init=self.depth+1, cmd='text', **kwargs))
+    pass
+    #End of class Board
+        
+
+#======
+#基盤画像系: exp 
+#======
+class Canvas(Board):
+    """根となるボードBoard型のサブクラス．基底描画系の画像オブジェクトを保持する．
+
+    Args: 
+
+        depth (int): 入子深さ．清書用．default=0
+
+        mode (string): 描画モード．'RGB' for pdf, 'RGBA' for png．default='RGB' 
+
+        ppi (int): 解像度 (ppi=pixel_per_inch). default=None
+
+        shape_pt (int): 外形のサイズ（単位は格子数）．(nx,ny)の順．default=(4,4), 
+
+        fontsize_regular_pt (int): 標準の文字サイズ（ポイントpt単位）．default=None, 
+
+        pen_width_pt (int): 辺幅（ポイントpt単位）. default=None,
+
+        grid_len_pt (int): 配置用の格子幅（ポイントpt単位）． default=None,
+
+        verbose (bool): ログ出力のフラグ．default=False    
+    """
+    # background (string): 背景色．デバッグ用．default='skyblue', #debug
+    def __init__(self,
+                 #depth=0, #アクセスを禁止する 
+                 #pilimage 
+                 mode='RGB', #'RGB' for pdf, 'RGBA' for png
+                 ppi=720, #ppi = pixel_per_inch
+                 # ppi=DEFAULT_PPI, #ppi = pixel_per_inch
+                 shape_pt=(4,4), 
+                 # shape_pt=None, 
+                 fontsize_regular_pt=None, 
+                 pen_width_pt=None,
+                 grid_len_pt=None,
+                 # background='skyblue', #debug
+                 verbose=False, 
+                 dep_init=0 #生成トレース用
+                 ):
+        """初期設定する
+        """
+        #パラメータ
+        self.mode = mode     
+        self.ppi  = ppi      
+        self.shape_pt = shape_pt
+        self.fontsize_regular_pt  = fontsize_regular_pt
+        self.pen_width_pt = pen_width_pt
+        self.grid_len_pt = grid_len_pt
+        self.depth = dep_init
+        self.verbose = verbose
+        #
+        self.pim = None #画像オブジェクト．遅延生成
+        
+        if verbose: 
+            self.repo(msg=f'Canvas.__init__(): vars={ kw.reduce(vars(self)) }')
+        #基礎クラスの生成子
+        super().__init__(parent=None, ## 描画命令を転送するための親
+                         dep_init=dep_init+1,
+                         verbose=verbose)
+        #最上位オブジェクトの深さ設定．
+        #- 上書きされないように，親クラスのsuper().__init__()以後に呼び出すこと．
+        if not self.ppi:
+            self.ppi  = DEFAULT_PPI 
+        
+        #一時的な画像オブジェクト：フォントのbb問い合わせに使う
+        if not self.shape_pt: 
+            self.shape_pt = (4, 4)  ##デフォールト
+
+        #座標変換パラメータ (origin, ratio) の設定
+        if self.grid_len_pt:
+            #外側変換を求める
+            if not self.matrix_ex:
+                p = (0,0)
+                q = (self.grid_len_pt, self.grid_len_pt)
+                xy  = [p, q]
+                bb_ = [(0,0), (1,1)]
+                self.matrix_ex = trans_make(xy_dst=xy, xy_src=bb_)
+
+        if self.shape_pt: #shape_ptが与えられていたら，直ちに生成
+            self.create_pim(shape_pt=self.shape_pt)
+            
+        return 
+        
+    #=====
+    # 基底描画系の生成
+    #=====
+
+    # 基底描画系の画盤pim(PilImage)の生成
+    def create_pim(self, shape_pt=None):
+        """基底描画系の画盤pim(PilImage)を生成する．
+        """
+        com.ensure(shape_pt, f'shape_pt must be defined!')
+        kwargs = {
+            'mode': self.mode,
+            'ppi' : self.ppi, 
+            'shape_pt': vec.normalize_shape(xy=shape_pt), 
+            'fontsize_regular_pt':self.fontsize_regular_pt, 
+            'pen_width_pt':self.pen_width_pt, 
+            'verbose':self.verbose, 
+        }
+        if self.verbose: 
+            self.repo(msg=f'.create_pim: kwargs={ kwargs }')
+        self.pim = pim.PilImage(**kwargs)  ##PilImageの生成
+        self.parent = self.pim  ## 描画命令の転送の根
+        return
+
+    # 基本：描画命令の転送
+    def send_draw(self, cmd=None, kwargs=None):
+        """描画命令 (cmd, kwargs) を，自身のバックエンドのPillowライブラリの描画オブジェクトへ転送する．
+        - 転送の前処理として，位置属性の幾何オブジェクト xy に，自身が定義する座標変換を施した上で，転送する．
+        - Canvasは根なので，自身がもつpimへ描画命令を転送する．
+
+        Args: 
+        	cmd (str): 描画命令名を表す文字列．
+        	kwargs (dict): 描画命令のキーワード引数を保持する辞書．
+		depth (int): 入れ子の深さを表す正整数．デバッグ用．
+
+        """
+        if self.verbose:
+                kwargs1 = kw.extract(kwargs, keys=['xy'], reduced=True)
+                self.repo(msg=f'Canvas.send_draw: cmd={cmd} kwargs={kwargs1}')
+        com.ensure(self.pim, f'Canvas={self.name()} must have pim={self.pim}!')
+        #描画情報`xy`を座標変換し，他のすべての属性を取り出す．
+        kwargs1 = self.extract(kwargs, trans=['xy'], keys=None)
+        self.pim.send_draw(cmd=cmd, kwargs=kwargs1, verbose=self.verbose) ##基盤描画系のpimへ転送する．
+        return 
+
+    # 基本：画像を表示する
+    def show(self, noshow=False, depth=0):
+        """配置と描画を行ない，画像をディスプレイに表示する．
+        次の手順で描画する．
+
+        - ステップ1: 再帰的に子オブジェクトへ arrange() 命令を送り，ボトムアップに配置の包含矩形 bb を計算する
+        - ステップ2: 包含矩形情報 bb を元に，self.create_pim() 命令を発行して，pillowの画像盤 self.pim を生成する．
+        - ステップ3: 再帰的に draw() 命令を発行して，トップダウンに描画を行う
+        - ステップ4: 自身のもつpillowオブジェクト self.pimに show() 命令を送り，画像を表示する
+        """
+        if self.verbose:
+            self.repo(msg=f'Canvas.show(): { kw.reduce(vars(self)) }')
+        
+        #ステップ1: ボトムアップに配置を計算する
+        bb = self.arrange()
+        com.ensure(bb, 'self.shape_pt must be defined!')
+
+        #ステップ2: 画像盤を生成する
+        if True: ##always replace the tentative one with new one
+            self.create_pim(shape_pt=bb)
+
+        #ステップ3: トップダウンに描画を行う
+        self.draw()
+        
+        #ステップ4: 画像を表示する
+        self.pim.show(noshow=noshow, depth=depth)  ##pilimage.PilImage
+        return
+
+    # PilImageオブジェクトの返却
+    def image(self): 
+        """PilImageオブジェクトを返す．"""
+        return self.pim  ##PilImageオブジェクト
+            
+    # 画像をファイルに保存する
+    def save(self, imgfile, **kwargs):
+        """imgfile: 保存する画像ファイルの名前．"""
+        self.pim.save(imgfile=imgfile, **kwargs)
+        return
+
+##======
+## 描画演算オブジェクト
+##======
+
+class DrawCommandBase(Board):
+    """描画演算オブジェクトの基底クラス．Boardクラスのサブクラス．
+    """
+    def __init__(self,
+                 #depth=0, #アクセスを禁止する
+                 dep_init=0, #生成トレース用
+                 cmd=None, **kwargs):
+        self.depth = dep_init #Loggable 
+        verbose = kw.get(kwargs, key='verbose')
+        if verbose: 
+            self.repo(msg=f'DrawCommandBase(): cmd={ cmd } kwargs={ kwargs }')
+        com.ensure(type(cmd) is str, f'cmd={cmd} must be str!')
+        super().__init__(dep_init=dep_init+1, verbose=verbose)
+        self.cmd     = cmd 
+        self.kwargs  = kwargs 
+        self.xy      = kw.get(kwargs, key='xy', required=True)
+        self.bb = None
+        return
+
+    #Override 
+    def arrange(self):
+        """ボトムアップに配置を計算する．子を持たないので直ちに計算する．
+
+        Args: 
+        	depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+        	verbose (bool): ログ出力のフラグ
+
+        Returns: 
+        	bb (rect): 自身の描画領域の包含矩形
+        	
+        """
+        if self.verbose:
+            self.repo(msg=f'DrawCommandBase.arrange(): cmd={ self.cmd } { kw.reduce(vars(self)) }')
+        if kw.contains(self.kwargs, 'xy'):
+            self.bb = kw.get(self.kwargs, 'xy')
+        #変換情報
+        self.origin = (0,0)
+        self.ratio  = (1.0, 1.0)
+        if self.verbose:
+            self.repo(msg=f'=> bb={self.bb}')
+        # if self.verbose:
+        #     self.repo(msg=f'DrawCommandBase.arrange(): => bb={self.bb}', header=False)
+        return self.bb
+
+    #Override 
+    def draw(self):
+        """トップダウンに画像を描画する"""
+        #子を持たないので直ちに描画
+        #self.kwargs['verbose'] = True
+        if self.verbose:
+            self.repo(msg=f'DrawCommandBase.draw: cmd={self.cmd} kwargs={self.kwargs}')
+        self.send_draw(cmd=self.cmd, kwargs=self.kwargs)
+        return
+
+    #Override 
+    def get_kwargs(self):
+        return self.kwargs
+    pass
+
+class DrawCommand(DrawCommandBase):
+    """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+    """
+    def __init__(self,
+                 dep_init=0, #生成トレース用
+                 cmd=None, **kwargs):
+        self.depth = dep_init #Loggable 
+        if kw.contains(kwargs, 'verbose'):
+            self.repo(msg=f'DrawCommand(cmd={cmd}, kwargs={kwargs})')
+        if dep_init==0 and kw.contains(kwargs, 'depth'):
+            dep_init = kwargs['depth']
+        super().__init__(dep_init=dep_init+1, cmd=cmd, **kwargs)
+        return 
+
+    def get_xy(self):
+        if self.verbose: 
+            print(f'debug: {self.name()}.getxy() => {xy}')
+        xy = kw.get(kwargs, key='xy', default=None)
+        return xy
+
+    def set_xy(self, xy):
+            # self.repo(f'debug: {self.name()}.set_xy({xy})')
+        # note: DrawCommand.expand_xyで型テストするので不要．
+        # com.ensure(vec.is_rect(xy) or vec.is_point(xy),
+        #            f'xy={xy} must be either a point or a point pair')
+        # self.kwargs['xy'] = expand_xy(xy) #debug
+        return
+
+class DrawCommandFixedSize(DrawCommandBase): 
+    """描画演算オブジェクトの派生クラス．DrawCommandBaseクラスのサブクラス．
+    """
+    def __init__(self,
+                 dep_init=0, #生成トレース用
+                 cmd=None, **kwargs):
+        self.depth = dep_init #Loggable 
+        if kw.contains(kwargs, 'verbose'):
+            self.repo(msg=f'DrawCommandFixedSize.__init__()')
+        super().__init__(dep_init=dep_init+1, cmd=cmd, **kwargs)
+
+class CommandDot(DrawCommandFixedSize):
+    """点の描画演算オブジェクトのクラス．DrawCommandFixedSizeクラスのサブクラス．
+    """
+    def __init__(self,
+                 dep_init=0, #生成トレース用
+                 **kwargs):
+        self.depth = dep_init #Loggable 
+        kwargs1 = self.extract(kwargs=kwargs,
+                               keys=['fill', 'width', 'outline'])
+        #compute bb for ellipse
+        diam = kw.get(kwargs, key='diameter',
+                      default=pim.DEFAULT_DOT_WIDTH_PT) 
+        xy = kw.get(kwargs, key='xy', required=True)
+        com.ensure((vec.is_point(xy)), f'xy={xy} must be a point!')
+        xy1 = pim.centered_box_shape(xy=xy, width=diam)
+        kwargs1['xy'] = xy1
+        self.verbose = kw.get(kwargs, key='verbose')
+        super().__init__(dep_init=dep_init+1, cmd='ellipse', xy=(0,0), verbose=self.verbose)
+        
+        #cmd info
+        self.parent = None 
+        self.cmd = 'ellipse'
+        self.kwargs = kwargs1
+        self.bb = xy1
+        return 
+    pass
+
+class CommandText(DrawCommandFixedSize):
+    """テキストの描画演算オブジェクトのクラス．DrawCommandFixedSizeクラスのサブクラス．
+    """
+    def __init__(self,
+                 dep_init=0, #生成トレース用
+                 **kwargs):
+        self.depth = dep_init #Loggable 
+        self.verbose = kw.get(kwargs, key='verbose')
+        self.parent = None 
+        self.pim = None 
+        super().__init__(dep_init=dep_init+1, cmd='text', xy=(0,0), verbose=self.verbose)
+        #cmd info
+        self.cmd = 'text'
+        self.kwargs = kwargs
+        return 
+    pass
+
+    #Override 
+    def arrange(self):
+        """ボトムアップに配置を計算する"""
+        kwargs1 = self.extract(kwargs=self.kwargs, keys=['xy', 'text', 'font', 'size', 'anchor', 'align', 'direction',])
+        kwargs1['relative'] = True
+        
+        #根のpimオブジェクトへbb情報を問い合わせる
+        self.bb = self.send_draw('textbbox', kwargs1)
+        return self.bb
+
+#======
+# サンプル：Boardの派生クラス
+#======
+class MarginBoard(Board):
+    """画盤（board）の座標系オブジェクトのクラス．Boardクラスのサブクラス．
+
+    Attributes: 
+        parent (Board): 親オブジェクト
+        xy (vec(float)): 親座標系での位置決めパラメータのベクタ (x,y)．位置指定パラメータ．
+        shape (vec(int)): 親座標系での自身の領域の形状(nx, ny)．位置指定パラメータ．
+        padding (float): 内側の余白
+        margin (float): 外側の余白
+        depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+        verbose (bool): ログ出力のフラグ
+    """
+    def __init__(self,
+                 dep_init=0, #生成トレース用
+                 **kwargs):
+        self.depth = dep_init #Loggable 
+        kwargs_org = kw.extract(kwargs, keys=None)
+        if 'background' in kwargs: 
+            self.background = kw.get(kwargs, key='background')
+            del kwargs['background']
+        kwargs1 = kw.extract(kwargs, keys=['verbose'], deleted=['margin', 'padding'])
+        if kw.contains(kwargs, 'verbose'):
+            self.repo(msg=f'MarginBoard(): { kwargs }')
+        super().__init__(dep_init=dep_init+1, **kwargs1)
+        self.kwargs = kwargs
+        return 
+
+
+        
+##======
+# ## メイン文
+# if __name__ == '__main__':
+#     shape = (9,6)
+#     reg = PilImage(ratio=128, shape=shape, xy = (0.5, 0.5))
+#     print('reg: \n', vars(reg))
+    
+##EOF
+

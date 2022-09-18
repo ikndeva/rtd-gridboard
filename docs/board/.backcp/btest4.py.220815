@@ -1,0 +1,152 @@
+# coding: utf_8
+# btest4.py
+# 画盤モジュールのテスト
+# マージン機構
+
+import sys
+import copy 
+from argparse import ArgumentParser
+import random
+import vector as vec 
+import common as com 
+import kwargs as kw
+import board as bd
+
+verbose = True
+
+#=====
+#便利関数
+#=====
+def pos(xy): 
+    return vec.geom_trans_gen(xy, 
+                func=lambda p: vec.point_apply(p, 
+                        lambda orig:(orig * edgelen)))
+
+##=====
+## コマンドライン引数
+##=====
+CMD_NAME = (__file__.split('/'))[-1]
+
+def reading_args_and_options():
+    USAGE_STR = f'Usage: python3 { CMD_NAME } OPTIONS '
+    ap = ArgumentParser(usage=USAGE_STR)
+    ## options: 
+    ## ppi 
+    ap.add_argument('-p', '--ppi', type=int, default=144, 
+                    help='set resolution parameter ppi (pixel-per-inch)')
+    ## shape 
+    ap.add_argument('-s', '--shape', type=str, default=None, 
+                    help='set the shape to int:int')
+    ## width 
+    ap.add_argument('-m', '--mbox', type=int, default=1, 
+                    help='set the number of inner boxes')
+    ## shape 
+    ap.add_argument('-o', '--outline_kind', type=str, default=None, 
+                    help="set the type of outlines in ('r', 'rect', 'l', 'line')")
+    ## verbose 
+    ap.add_argument('-v', '--verbose', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## 
+    args = ap.parse_args()
+    return args, ap
+
+def normalize_shape(shape_str):
+    shape0 = shape_str.split(':')
+    com.ensure(len(shape0)==2, 'shape={mn} must have two numbers!')
+    shape = [0,0]
+    for i in range(2):
+        shape[i] = int(shape0[i])
+    return shape
+    
+
+##======
+## メイン文
+##======
+verbose = True
+fancy = ['lightskyblue', 'mediumaquamarine', 'greenyellow', 'tan', 'lightgrey']
+solid = ['red', 'darkorchid', 'lightcoral', 'orange', 'royalblue', ]
+
+#ランダム色
+def random_color(color_list):
+    idx = int(len(color_list) * random.random())
+    return color_list[idx % len(color_list)]
+
+def random_color(color_list):
+    idx = int(len(color_list) * random.random())
+    return color_list[idx % len(color_list)]
+
+def next_color(color_list, col):
+    idx1 = color_list.index(col) + 1
+    return color_list[idx1 % len(color_list)]
+
+def get_xy(point=None, width=1.0): 
+    q = point; q1 = vec.add(q, (width,width))
+    xy = [q, q1]
+    return xy 
+
+if __name__ == '__main__':   
+    #コマンドラインの引数とオプションの読み込み
+    opt, ap = reading_args_and_options()
+
+    #parameters
+    verbose=False
+    if opt.ppi: ppi = opt.ppi
+    else: ppi = 72
+
+    fontsize = 12
+    grid_len_pt = 36
+    width1=2
+    shape = [3, 3] 
+    ibd = 1 #背景色の番号
+    
+    #適当に背景色をとる
+    def bg(id): 
+        return fancy[id % len(fancy)]
+
+    def fg(id):
+        return solid[id % len(solid)]
+
+    #======
+    #画像枠の生成
+    #======
+
+    pi = bd.Canvas(ppi=ppi, 
+                    grid_len_pt=grid_len_pt, 
+                    verbose=True)
+
+    # b0 = pi.add(bd.MarginBoard(margin=0.25, background=bg(ibd)))
+    b0 = pi.add(bd.MarginBoard(margin=0.25, background='lightskyblue',
+                               verbose=True))
+
+    #======
+    ##長方形を書く
+    #======
+    col0 = int((100 * random.random()) % 100)
+    m = 3
+    if opt.mbox:
+        m = opt.mbox  
+    for id in range(m): 
+        ibd += 1 
+        xy = get_xy(point=(id, id % 2), width=1.0)
+        b1 = b0.add(bd.MarginBoard(xy=[(id, id % 2), (id + 1, (id % 2) + 1)],
+                                   margin=0.25, background=bg(ibd),
+                                   verbose=True))
+        b1.rectangle(xy=[(0,0), (1,1)],
+                     fill=fg(col0 + id), verbose=True)
+
+        # xy = get_xy(point=(id, id % 2), width=1.0)
+        # # print(f'debug: b0={b0}')
+        # # b1 = b0.add(bd.MarginBoard(xy=xy, margin=0.25, background=bg(ibd)))
+        # # #b1 = b0.add(bd.MarginBoard(xy=xy, shape=(1,1), padding=0.25, background=bg(ibd)))
+
+        # # xy = get_xy(point=(0,0), width=1.0)
+        # # b1.rectangle(xy=xy, fill=fg(col0 + id), verbose=False)
+
+        
+
+    pi.show(verbose=True)
+
+
+##EOF
+
+

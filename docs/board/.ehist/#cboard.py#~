@@ -1,0 +1,976 @@
+# coding: utf_8
+# 画盤モジュール
+"""画盤モジュール
+
+cboard.py
+220815 Created based on board.py
+by Hiroki Arimura, arim@ist.hokudai.ac.jp 
+
+Attributes: 
+
+    DEFAULT_PPT = 720 (int): デフォールトの解像度
+    DEFAULT_LINE_WIDTH = 1 (float): デフォールトの辺幅
+    DEFAULT_COLOR_BORDER_INNER = 'red' (str): デフォールトの境界色（内側）
+    DEFAULT_COLOR_BORDER_OUTER = 'blue' (str): デフォールトの境界色（外側）
+
+"""
+import sys
+import math 
+import numpy as np
+import random 
+import copy 
+import inspect
+import cairo 
+from typing import NamedTuple
+
+import common as com
+import vector as vec 
+import kwargs as kw
+import crtool as crt
+import cimage as pim
+
+#Pillow package
+import PIL as pil
+
+# DEFAULT_PPI = 720 
+# DEFAULT_LINE_WIDTH = 1 
+# DEFAULT_COLOR_BORDER_INNER = 'red'
+# DEFAULT_COLOR_BORDER_OUTER = 'blue'
+# EMPTY_RECT = ((0,0), (0,0))
+
+
+## PARAMS 2022 version
+EMPTY_RECT = (0.0, 0.0, 0.0, 0.0)
+MYCOLS = list(crt.DARKCOL.values())
+#MYCOLS = list(crt.MYCOL.values())
+DEFAULT_LINE_WIDTH=1
+
+##=====
+## ヘルパー関数： 座表と座表変換
+##=====
+
+def isTypeSequence(box):
+    return isinstance(box, tuple) or isinstance(box, list)
+
+def isBoxOrPoint(box):
+    if box==None:
+        return False
+    elif isTypeSequence(box): 
+        if (len(box) == 2) or (len(box) == 4):
+            return True
+        else:
+            return False
+    else:
+        return False
+    return False
+
+def isProperPoint(box):
+    if not isBoxOrPoint(box):
+        return False
+    elif len(box)!=2:
+        return False
+    else:
+        return True
+
+def isProperBox(box):
+    """4座標（矩形）からなる正しい矩形かをTrue, Falseで返す．
+    """
+    if not isBoxOrPoint(box):
+        return False
+    elif len(box)!=4:
+        return False
+    else:
+        x0, y0, x1, y1 = box
+        if x1 >= x0 and y1 >= y0:
+            return True
+        else:
+            return False
+    return False
+
+def box_normalize(box):
+    """4座標（矩形）からなる正しい矩形であることを検査し，2座標（点）なら4座標に正規化する．
+    """
+    com.ensure(isBoxOrPoint(box), f'box must be of TypeBoundingBox: type(box)={ type(box) }')
+    if len(box)==2:
+        box = (box[0], box[1], box[0], box[1])
+    com.ensure(isProperBox(box), f'box must a properbox: box={box}')
+    return box
+
+#長方形の和（最小包含矩形）
+def box_union(box0, box1, verbose=False):
+    """矩形の対を受け取り，それらの最小包含長方形を表す対を返す．
+
+    Args: 
+    	box0, box1 : 点 (x0, y0) または矩形 (x0, y0, x1, y1)
+
+    Returns: 
+	rect: 矩形 box = [p, q]
+"""
+    box0 = box_normalize(box0)
+    box1 = box_normalize(box1)
+    x0 = min(box0[0], box1[0])
+    y0 = min(box0[1], box1[1])
+    x1 = max(box0[2], box1[2])
+    y1 = max(box0[3], box1[3])
+    return (x0, y0, x1, y1)
+
+def point_apply_trans(p, trans=None, verbose=False): 
+    """変換を適用する
+    Args: 
+      p (Point) : point 
+      trans (GeoTransform) : 空間変換
+    """
+    com.ensure(isProperPoint(p), f'p={ p } must be a point!')
+    if trans == None:
+        print(f'warning: empty trans: do nothing!')
+    elif isinstance(trans, GeoTransform):
+        if isinstance(trans, Translate):
+            p = (p[0]+trans.x, p[1]+trans.y)
+        else:
+            panic(f'no such GeoTransform is implemented!')
+    else: 
+        panic(f'trans must be of GeoTransform!: trans={ trans }')
+    return p 
+    
+def box_apply_trans(box, trans=None, verbose=False): 
+    """変換を適用する
+    Args: 
+      cr (Cairo.Context) : Cairo.Context
+      trans (GeoTransform) : 空間変換
+    """
+    box = box_normalize(box)
+
+    if trans == None:
+        print(f'warning: empty trans: do nothing!')
+    elif isinstance(trans, GeoTransform):
+        if isinstance(trans, Translate):
+            box = (box[0]+trans.x, box[1]+trans.y,
+                   box[2]+trans.x, box[3]+trans.y)
+        else:
+            panic(f'no such GeoTransform is implemented!')
+    else: 
+        panic(f'trans must be of GeoTransform!: trans={ trans }')
+    return box
+
+def _ext_vars_struct(board=None):
+    return kw.extract(kwargs=vars(board), keys=['cmd','depth','verbose'])
+
+def dump_board(X, dep=0):
+    print(f'{ "| "*dep }{ X.bname()}\t'+
+          f' depth={ X.depth }'
+          f' ord_={ X.ord_ }'
+          f' verbose={ X.verbose }'
+          )
+    for idx, pair in enumerate(X.children()):
+        trans, child = pair #分解
+        if isinstance(child, Board):
+            dump_board(child, dep=dep+1)
+    return 
+
+#=====
+# 座標変換
+# - パラメータ:  (origin, ratio)
+#=====
+
+# #座標変換の適用
+# def trans_apply_point(xy=None, matrix=None):
+#     """平行移動xyと拡大率matrix.ratioで決まる座標変換を点に適用する
+#     Args: 
+#     	xy (vector): 移動ベクトル
+
+#     	matrix (): 
+#     """
+#     if not matrix: 
+#         return xy
+#     else:
+#         return vec.add(matrix.origin, vec.scale(xy, matrix.ratio)) 
+    
+#変換を計算
+def calculate_ratio(xy0, xy1):
+    """
+    変換を計算の場合1: xy0が包含長方形として与えられている時
+    Args:
+    ----------
+    xy0, xy1: point or [point, ...] - 親座標系と子座標系での長方形
+    ratio: 数値対 - 子座標系から親座標系への拡大率
+    """ 
+    com.ensure(vec.is_rect(xy0) or vec.is_point(xy0), f'xy0={xy0} must be a rect or a point')
+    com.ensure(vec.is_rect(xy1) or vec.is_point(xy1), f'xy1={xy1} must be a rect or a point')
+    size0 = vec.normalize_shape(xy0)
+    size1 = vec.normalize_shape(xy1)
+    #処理
+    _ratio = [1,1] #変更するのでタプルでなくリストにする
+    for dim in (0,1): 
+        if size1[dim]==0: #ゼロなら比率1.0のまま
+            _ratio[dim] = 1.0
+        else: #その軸の比率を求める．
+            _ratio[dim] = size0[dim]/size1[dim] 
+    return tuple(_ratio)
+    
+#座標変換パラメータの計算
+def trans_make(xy_dst=None, xy_src=None, verbose=False):
+    """座標変換のパラメータを計算する．
+
+    Args:
+    	xy_dst (list): 長方形 
+    	xy_src (list): 長方形 
+    	verbose (bool): ログ出力のフラグ
+
+    Returns: 
+    	(origin, ratio): 数値対 - 座標変換パラメータ    
+
+    Example: 
+
+    	例::
+
+    		rect0=[(0,0), (10, 10)]
+    		rect1=[(0,0), (1,1)]
+        	self.matrix_ex = trans_make(xy_dst=rect0, xy_src=rect1)
+
+    """
+    if verbose: print(f'@trans_make: xy_dst={xy_dst} xy_src={xy_src}')
+    #正規化
+    if not xy_dst:
+        xy_dst = [(0,0)]
+    elif vec.is_point(xy_dst):
+        xy_dst = [xy_dst]
+    if not xy_src:
+        xy_src = [(0,0)]
+    elif vec.is_point(xy_src):
+        xy_src = [xy_src]
+    com.ensure(vec.is_point_seq(xy_dst), 'wrong xy_dst={xy_dst}!')
+    com.ensure(vec.is_point_seq(xy_src), 'wrong xy_src={xy_src}!')
+    #並行移動の計算
+    com.ensure(len(xy_dst) >= 1, 'null xy_dst={xy_dst}!')
+    com.ensure(len(xy_src) >= 1, 'null xy_src={xy_src}!')
+    dst, src = xy_dst[0], xy_src[0]
+    com.ensure(vec.is_point(dst), 'dst={dst} must be a point!')
+    com.ensure(vec.is_point(src), 'src={src} must be a point!')
+    origin = vec.sub(dst, src)   
+    #拡大率の計算
+    if len(xy_dst)==2 and len(xy_src)==2: 
+        ratio = calculate_ratio(xy_dst, xy_src)  
+    else:
+        ratio = (1.0, 1.0)
+    mat = TransMatrix(origin=origin, ratio=ratio)
+    if verbose: print(f'@trans_make: gen mat={mat}')
+    return mat
+
+
+##======
+## 配置：ボード位置の微調整
+##======
+
+class GeoTransform():
+    """空間変換の抽象クラス
+    """
+    def __init__(self):
+        return
+    pass 
+
+class Translate(GeoTransform):
+    """並行移動の変換のクラス
+    """
+    def __init__(self, x=0, y=0):
+        com.ensure(x!=None and y!=None,
+                   f'x={x} and y={y} must be non-None!')
+        self.x = x
+        self.y = y
+        return
+
+    def __str__(self):
+        return f'Translate{(self.x, self.y)}'
+    pass 
+
+#=====
+# 画盤（board）のクラス: 座標系オブジェクト
+#=====
+class Board(com.Loggable):
+    """画盤（board）のクラス: 座標系オブジェクト
+
+    Attributes: 
+        verbose (bool): ログ出力のフラグ
+    """
+
+    count = 0 #board id
+
+    def __init__(self,
+                 dep_init=None,   #親クラスLoggableに設定: 
+                 tag=None, #任意の文字列. 
+                 verbose=False #親クラスLoggableに設定:
+                 ):
+        """画盤オブジェクトを初期化する
+
+        Args: 
+            parent (Board): 自身に設定: 親ボード親オブジェクト
+            shape (vec)   : 自座標系での自身の包含矩形
+            dep_init (int): 親クラスLoggableに設定. 生成時に親+1で指定する．
+            verbose (bool): 親クラスLoggableに設定. ログ出力のフラグ
+        """
+        #引数
+        #親Loggableの初期化
+        super().__init__(dep_init=dep_init, 
+                         verbose=verbose,
+                         tag=tag)
+        #初期化
+        self.parent = None # 親オブジェクト
+        self.shape  = None #自座標系における自身の包含矩形
+        self.children_ = [] # 子のリスト
+        self.ord_   = None  # 子ID = 親の子リスト中の自身の添字
+        self.box    = None  # exp: 包含矩形. 
+        # self.tag = None 
+        
+        if self.verbose:
+            self.repo(msg=f'{self.bname()}.__init__(): { vars(self) }')
+        return
+
+    def bname(self, notag=False):
+        bstr = self.__class__.__name__
+        if (not notag) and self.tag: 
+            bstr += f"['{ self.tag }']"
+        return bstr
+
+    # 基本：子画盤の並びを返す
+    def children(self):
+        """子画盤の並び children を返す．
+
+        Returns: 
+        	list: 子オブジェクトのリスト
+        """
+        return self.children_  ##ダミー：子クラスでOverrideすること
+
+    def rec_set_depth(self, dep=None, par_verbose=None):
+        """再帰的に，自分と全ての子孫に正しく深さを設定する．
+        Args: 
+          dep (int) : 自分に設定すべき深さ．親の深さ + 1
+        Note: 
+          仮定：self.depth==Noneの場合は，全ての子孫のdepth==None
+        """
+        #print(f'{ "| "*dep }{ X.bname()} \tdepth={ X.depth }')
+        if self.depth!=None:
+            return
+        elif dep==None:
+            return
+        else: 
+            self.depth = dep
+
+        if par_verbose!=None and self.verbose==None:
+            self.verbose = par_verbose
+
+        for _, child in self.children():
+            if isinstance(child, Board):
+                child.rec_set_depth(dep=dep+1, par_verbose=par_verbose)
+        return 
+
+    def relative_apath_get(self, top=None, cid=None, apath=None, hgt=0):
+        """基準オブジェクトから自身へのアクセスパス（子添字列）を返す．
+        Args: 
+          top (Board) : 基準オブジェクト．このBoardか根へ到達すると停止する．
+        Returns : 
+          (list(int)) : 成功すれば，基準オブジェクトから自身へのアクセスパス（子添字列）．失敗すればNone
+        Note: 
+          仮定：self.depth==Noneの場合は，全ての子孫のdepth==None
+        """
+        com.ensure(top!=None, f'top must not be None!')
+        if apath==None:
+            apath=[]
+        apath.append((self, cid))
+        pa = self.parent
+        if self==top: 
+            apath.reverse() #return None
+            return apath
+        elif pa==None or (not isinstance(pa, Board)):
+            return None 
+        else:
+            return pa.relative_apath_get(top=top, cid=self.ord_, apath=apath, 
+                                      hgt=hgt+1)
+    
+    def relative_transform_point_by_apath(self, p=None, apath=None,
+                                          verbose=False):
+        """点p=(x,y)を，アクセスパスapath=((), ..., ())
+        Args: 
+          p (tuple) : 点p=(x,y) or 矩形p=(x0, y0, x1, y1)
+          apath (list) : (ord, board)のリスト．最初の要素はord=None
+        """
+        if len(apath)==0:
+            com.panic(f'- empty list; It must not reach!')
+        else:
+            x, ord = apath[0]
+            com.ensure(isinstance(x, Board), f'x must be of Board type!')
+            com.ensure(self==x, f'condition self==apath[0][0] must hold!')
+            if verbose:
+                print(f'\tdebug: relative_transform_point_by_apath: p={ p }\tapath[0]={ (x, ord) }')
+            if ord==None:
+                if verbose: print(f'- last element; return p={ p }!')
+                return p
+            elif not (ord < len(x.children_)):
+                com.panic(f'ord={ord} is out of range!:'+
+                          f' num children={ len(x.children_) }')
+            else: 
+                trans, child = x.children_[ord]
+                if isBoxOrPoint(p):
+                    if (len(box) == 2):
+                        p1 = point_apply_trans(p, trans=trans)
+                    elif (len(box) == 4):
+                        p1 = box_apply_trans(p, trans=trans)
+                    else:
+                        panic(f'p={p} must be either a point or a box!')
+                apath1 = apath[1:]
+                return child.relative_transform_point_by_apath(p1, apath1, verbose=verbose)
+    
+    def relative_transform_point(self, p=None, target=None, verbose=False):
+        """自身の子孫であるBoardオブジェクトtargetの座標系における，
+        点p=(x,y)の局所座標を返す，
+        Args: 
+          target (Board) : 自身の子孫であるBoardオブジェクト
+          p (tuple) : 点p=(x,y)
+        Notes: 
+          apath (list) は，selfからtargetへのアクセスパスであり，
+          (board, ord)のリスト．
+          - 末尾以外の要素boardについて，その子はboard.chidren_[ord]であり，
+          - 末尾要素boardに対してはord=Noneである．
+        """
+        apath = target.relative_apath_get(top=self)
+        if verbose: 
+            self.repo(msg=f'relative_transform_point: apath={ [ (obj, ord) for obj, ord in apath ] }')
+        return self.relative_transform_point_by_apath(p=p, apath=apath,
+                                                      verbose=verbose)
+
+    # exp 基本：子を追加する
+    def put(self, child=None, trans=None): 
+        """子を追加する．
+
+        Args: 
+            trans (cairo.Matrix) : 自座標における子の配置を指示する変換行列．原点にある子を所望の場所に配置するためのアフィン変換を表す．
+            child (Board): 子として追加するBoardオブジェクト
+
+        Returns:
+            Board: 追加した子オブジェクト. 
+        """
+        if self.verbose: 
+            self.repo(msg=f'{self.bname()}.put(): trans={trans} child={ child } with vars={ kw.reduce(vars(child)) }...')
+
+        #入力チェック
+        com.ensure(isinstance(child, Board),
+                   'child={child} must be a subclass of Board!')
+        
+        #親子関係の管理
+        ##親ボードを設定
+        if child.parent == None: 
+            child.parent = self
+            # 深さ設定
+            if self.depth != None and (type(self.depth) in (int, float)): 
+                child.rec_set_depth(dep=int(self.depth)+1,
+                                    par_verbose=self.verbose) 
+                #notes: 部分木をアタッチする場合があるので，再帰的に設定する
+        else:
+            panic(f'parent is already defined! parent={child.parent}')
+        ##verboseを設定
+        if self.verbose:
+            child.verbose = child.verbose or self.verbose
+
+        # ##深さを管理
+        # if child.depth == None:
+        #     if self.depth != None:
+        #         child.depth = self.depth + 1
+        #     else:
+        #         child.depth = 0 
+
+        #子を追加する
+        child.ord_ = len(self.children_)      #子ID
+        self.children_.append((trans, child)) #子リスト
+        if self.verbose: 
+            self.repo(f"=> added { self.bname() }"+
+                      f" with vars={ _ext_vars_struct(board=child) }")
+        return child
+
+    def cr_apply_trans(self, cr, trans=None, verbose=False): 
+        """変換を適用する
+        Args: 
+          cr (Cairo.Context) : Cairo.Context
+          trans (GeoTransform) : 空間変換
+        """
+        com.ensure(cr != None, f'cr must not None!')
+
+        if trans == None:
+            print(f'warning: empty trans')
+            return
+        
+        if self.verbose:
+            self.repo(isChild=True, msg=f'apply GeoTransform: { trans }')
+        if isinstance(trans, GeoTransform):
+            if isinstance(trans, Translate):
+                cr.translate(trans.x, trans.y)
+            else:
+                panic(f'no such GeoTransform is implemented!')
+        else: 
+            panic(f'trans must be of GeoTransform!: trans={ trans }')
+        return 
+
+
+    # #座標変換の適用
+    # def trans_apply_point(xy=None, translate):
+    #     """平行移動xyと拡大率matrix.ratioで決まる座標変換を点に適用する
+    #     Args: 
+    #         xy (vector): 移動ベクトル
+
+    #         matrix (): 
+    #     """
+    #     if not matrix: 
+    #         return xy
+    #     else:
+    #         return vec.add(matrix.origin, vec.scale(xy, matrix.ratio)) 
+    def box_trans_and_union(self, boxes=None, box1=None, trans=None):
+        com.ensure(isBoxOrPoint(box1), f'box1 must be a point or a box!: { box1 }')
+        box1 = box_normalize(box1)
+        if self.verbose:
+            self.repo(isChild=True, msg=f'apply box transform: {trans}')
+        box1 = box_apply_trans(box1, trans=trans)
+        boxes = box_union(boxes, box1)
+        return boxes 
+
+    # exp 基本：配置の計算
+    def arrange(self):
+        """配置を計算する．配置は，ボトムアップに再帰的に計算される．
+
+        Args: 
+        Returns: 
+        	rect: 計算済みの自身の包含矩形オブジェクト
+        """
+        if self.verbose:
+            self.repo(msg=f'{self.bname()}.arrange(): { vars(self) }')
+
+        #子供全ての包含長方形を計算する
+        boxes = EMPTY_RECT
+        
+        #自身の描画配置情報を得る
+        box0 = self.arrange_me()
+        if box0:
+            boxes = self.box_trans_and_union(boxes, box0, trans=None)
+        
+        for idx, pair in enumerate(self.children()):
+            trans, child = pair #分解
+            #子の型チェック
+            com.ensure(isinstance(child, Board),
+                       'child must be a subclass of Board!: {child}')
+            if trans: 
+                if isinstance(trans, GeoTransform):
+                    pass
+                else: 
+                    self.repo(msg=f'trans must be of GeoTransform: {type(trans)}')
+            if self.verbose:
+                self.repo(msg=f'=> [{idx}] calling on {idx}-th child={ child.name() }', isChild=True, header=False)
+                
+            #子の再帰処理
+            child_box = child.arrange()
+                
+            #自身の包含矩形の更新
+            if child_box:
+                boxes = self.box_trans_and_union(boxes, child_box, trans=trans)
+            # if child_box:
+            #     boxes = box_union(boxes, child_box)
+
+        self.box = boxes 
+        if self.verbose:
+            self.repo(msg=f'{self.bname()}.arrange()=> box={ boxes }', isChild=True)
+        return boxes
+
+    def arrange_me(self):
+        """自分の座標系で配置を計算する
+        """
+        box = None
+        return box 
+        
+    # 基本：描画
+    def draw(self, cr):
+        """トップダウンに画像を描画する．
+        Args: 
+            trans (GeoTransform) : 空間変換
+            pm0 (pim.ImageBoard) : 基本描画のプリミティブボード
+        """
+        if self.verbose:
+            self.repo(msg=f'Board.draw')
+        #cr = pim0.context()
+            
+        ## 自分の空間を開く
+        cr.save()
+            
+        #必要なら自分の描画を行う
+        self.draw_me(cr)
+        
+        #子の描画を行う
+        for idx, pair in enumerate(self.children()):
+            trans1, child = pair #分解
+            #子の型チェック
+            com.ensure(isinstance(child, Board),
+                       'child must be a subclass of Board!: {child}')
+            
+            cr.save()    ## 子の空間を開く
+            if isinstance(trans1, GeoTransform): 
+                self.cr_apply_trans(cr, trans1) ## 変換を適用する
+            child.draw(cr)
+            cr.restore() ## 子の空間を閉じる
+
+        ## debug
+        ## 包含矩形を描画する
+        if self.verbose and isBoxOrPoint(self.box):
+            self.repo(msg=f'debug: draw my box={ self.box }', isChild=True)
+            self.draw_perturbed_box(self.box, context=cr,
+                                    max_perturb=8*DEFAULT_LINE_WIDTH)
+        ## 自分の空間を閉じる
+        cr.restore()
+        return
+
+    def draw_perturbed_box(self, box, context=None, max_perturb=None):
+        """位置を
+        """
+        cr = context 
+        box = box_normalize(self.box)
+        x, y = box[0], box[1]
+        width, height=(box[2]-box[0]), (box[3]-box[1])
+        ## 色を選ぶ
+        rgb = MYCOLS[0]
+        if self.depth: 
+            rgb = MYCOLS[self.depth % len(MYCOLS)]
+            rgb = (rgb[0], rgb[1], rgb[2], 0.5)
+        else:
+            print(f'debug: self.depth=None at { self.bname() }')
+        ## 位置を微小変動させる
+        dx = dy = max_perturb*random.random() - 0.5*max_perturb 
+        crt.cr_rectangle(x + dx, y + dy, width, height,
+                         source_rgb=rgb,
+                         line_width=1,
+                         context=cr)
+        return 
+
+    #=====================
+    # padding and padding: begin
+    #=====================    
+    # 派生：Override
+    def draw_me(self, cr):
+        """自分の描画を行う：サンプル
+        Args: 
+            pm0 (pim.ImageBoard) : 基本描画のプリミティブボード
+        """
+        if self.verbose:
+            self.repo(isChild=True, msg=f'{self.bname()}.draw_me()...')
+        ## ここでcontext crに何か描く．
+        return 
+
+    ##キーワード引数辞書からの部分コピー
+    def extract(self, kwargs=None, keys=None, trans=None):
+        """与えられたキーワード引数辞書 kwargs から，属性リストkeysで指定された属性値を取り出した引数辞書を返す．
+        ただし，座標変換関数`xy1 = self.trans(xy)`を用いて，属性リストtrans中の幾何オブジェクトを座標変換する．
+        
+        Args: 
+        	kwargs (dict): キーワード引数辞書 kwargs 
+        	keys (list(str)): 抽出対象の属性リスト．ここから取り出した引数を取り出す．
+        	trans  (list(str)): 座標変換対象の属性リスト．引数を座標変換する．
+
+        Retruns: 
+        	抽出対象と座標変換対象の属性を含むキーワード辞書
+        """
+        return kw.extract(kwargs=kwargs, keys=keys, trans=trans,
+                          func=lambda xy:self.trans(xy) 
+                          )
+    
+    pass
+    #End of class Board
+        
+
+#======
+#基盤画像系: exp 
+#======
+class Canvas(Board):
+    """根となるボードBoard型のサブクラス．基底描画系の画像オブジェクトを保持する．
+
+    Args: 
+
+        depth (int): 入子深さ．清書用．default=0
+
+        mode (string): 描画モード．'RGB' for pdf, 'RGBA' for png．default='RGB' 
+
+        ppi (int): 解像度 (ppi=pixel_per_inch). default=None
+
+        shape_pt (int): 外形のサイズ（単位は格子数）．(nx,ny)の順．default=(4,4), 
+
+        fontsize_regular_pt (int): 標準の文字サイズ（ポイントpt単位）．default=None, 
+
+        line_width_pt (int): 辺幅（ポイントpt単位）. default=None,
+
+        grid_len_pt (int): 配置用の格子幅（ポイントpt単位）． default=None,
+
+        verbose (bool): ログ出力のフラグ．default=False    
+    """
+    # background (string): 背景色．デバッグ用．default='skyblue', #debug
+    def __init__(self,
+                 imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
+                 format="pdf",   #出力ファイルフォーマット（拡張子 pdf, png）
+                 outfile="out",  #出力ファイル名（拡張子を除く）
+                 imagesize='XGA',#初期の画像サイズ
+                 verbose=False, 
+                 tag=None,
+                 ):
+        """初期設定する
+        """
+        #基礎クラスの生成子
+        super().__init__(dep_init=0, verbose=verbose, tag=tag) 
+        #パラメータ
+        self.imgtype   = imgtype
+        self.format    = format
+        self.outfile   = outfile
+        self.imagesize = imagesize
+        self.pim    = None   #基礎画像オブジェクト．遅延生成
+        
+        if verbose: 
+            self.repo(msg=f'{self.bname()}.__init__(): vars={ kw.reduce(vars(self)) }')
+
+        #基底描画オブジェクトの生成
+        if self.format: #cairoのformatが与えられていたら，直ちに基底画像pimを生成
+            com.ensure(format, f'format must be defined!')
+            if self.verbose: 
+                self.repo(msg=f'.create_pim: format={ format }')
+            self.pim = pim.ImageBoard(
+                dep_init=self.depth+1, 
+                format=format, 
+                outfile=outfile, 
+                imagesize=imagesize, 
+                verbose=self.verbose
+            )  ##ImageBoardの生成
+            self.pim.depth=self.depth+1
+            # self.parent = self.pim  ## 描画命令の転送の根
+        return 
+        
+    #=====
+    # 基底描画系の生成
+    #=====
+
+    # 基本：画像を表示する
+    def show(self, noshow=False, depth=0):
+        """配置と描画を行ない，画像をディスプレイに表示する．
+        次の手順で描画する．
+
+        - ステップ1: 再帰的に子オブジェクトへ arrange() 命令を送り，ボトムアップに配置の包含矩形 box を計算する
+        - ステップ2: 包含矩形情報 box を元に，self.create_pim() 命令を発行して，pillowの画像盤 self.pim を生成する．
+        - ステップ3: 再帰的に draw() 命令を発行して，トップダウンに描画を行う
+        - ステップ4: 自身のもつpillowオブジェクト self.pimに show() 命令を送り，画像を表示する
+        """
+        if self.verbose:
+            self.repo(msg=f'{self.bname()}.show(): { kw.reduce(vars(self)) }')
+        
+        #ステップ1: ボトムアップに配置を計算する
+        box = self.arrange()
+        com.ensure(box, 'self.shape_pt must be defined!')
+
+        # #ステップ2: 画像盤を生成する
+        # if True: ##always replace the tentative one with new one
+        #     self.create_pim(shape_pt=box)
+
+        #ステップ3: トップダウンに描画を行う
+        # trans_ = cairo.Matrix() ##identity matrix
+        cr = self.pim.context()
+        self.draw(cr)
+        
+        #ステップ4: 画像を表示する
+        self.pim.show(noshow=noshow, depth=depth)  ##pilimage.ImageBoard
+        return
+
+    # ImageBoardオブジェクトの返却
+    def getImageBoard(self): 
+        """ImageBoardオブジェクトを返す．"""
+        return self.pim  ##ImageBoardオブジェクト
+            
+    # 画像をファイルに保存する
+    def save(self, imgfile, **kwargs):
+        """imgfile: 保存する画像ファイルの名前．"""
+        self.pim.save(imgfile=imgfile, **kwargs)
+        return
+
+##======
+## 描画演算オブジェクト
+##======
+
+class DrawCommandBase(Board):
+    """描画演算オブジェクトの基底クラス．Boardクラスのサブクラス．
+    """
+    def __init__(self,
+                 cmd=None, #命令の名前
+                 tag=None,                  
+                 **kwargs  #命令の引数
+                 ):
+        verbose = kw.get(kwargs, key='verbose')
+        com.ensure(cmd!=None, f'DrawCommandBase(): cmd must not be None!')
+        super().__init__(verbose=verbose, tag=tag)
+        if verbose: 
+            self.repo(msg=f'{self.bname()}(): cmd={ cmd } kwargs={ kwargs }')
+        com.ensure(type(cmd) is str, f'cmd={cmd} must be str!')
+
+        #命令を格納する
+        self.cmd     = cmd 
+        self.kwargs  = kwargs 
+        return
+
+    #Override 
+    def arrange(self):
+        """ボトムアップに配置を計算する．子を持たないので直ちに計算する．
+
+        Args: 
+        Returns: 
+        	box (rect): 自身の描画領域の包含矩形
+        	
+        """
+        if self.verbose:
+            self.repo(msg=f'{self.bname()}.arrange(): cmd={ self.cmd } { kw.reduce(vars(self)) }')
+            
+        box = self.arrange_me()
+        
+        if self.verbose:
+            self.repo(msg=f'=> box={box}')
+        return box
+
+    #Override 
+    def draw_me(self, cr):
+        if True or self.verbose:
+            self.repo(isChild=True, msg=f'{self.bname()}.draw_me(): { vars(self) }')
+        kwargs1 = kw.extract(kwargs=self.kwargs, keys=['x', 'y', 'width', 'height', 'fill', 'source_rgb', 'edge_rgb', 'line_width'])
+        # if self.verbose and False:
+        #     self.repo(isChild=True, msg=f'debug: self.kwargs={ self.kwargs }')
+        #     self.repo(isChild=True, msg=f'debug: kwargs1={ kwargs1 }')
+        self.draw_me_impl(cr)
+        return 
+
+    #Override: To be implemented 
+    def draw_me_impl(self, cr):
+        """To be implemented 
+        """
+        return 
+        
+    #Override 
+    def get_kwargs(self):
+        return self.kwargs
+    pass
+
+class DrawCommandTemplate(DrawCommandBase):
+    """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+    """
+    def __init__(self, cmd=None, **kwargs):
+        super().__init__(cmd=cmd, **kwargs)
+        return 
+
+class DrawRectangle(DrawCommandBase):
+    """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+    """
+    def __init__(self, **kwargs):
+        super().__init__(cmd='rectangle', **kwargs)
+        return 
+
+    #Override 
+    def arrange_me(self):
+        x = kw.get(self.kwargs, 'x', required=True)
+        y = kw.get(self.kwargs, 'y', required=True)
+        width = kw.get(self.kwargs, 'width', required=True)
+        height = kw.get(self.kwargs, 'height', required=True)
+        box = (x, y, x+width, y+height)
+        return box 
+        
+    #Override 
+    def draw_me_impl(self, cr):
+        kwargs1 = kw.extract(kwargs=self.kwargs,
+            keys=['x', 'y', 'width', 'height', 'fill', 'source_rgb', 'edge_rgb', 'line_width'])
+        crt.cr_rectangle(context=cr, **kwargs1) 
+        return 
+
+class DrawArc(DrawCommandBase):
+    """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+    """
+    def __init__(self, **kwargs):
+        super().__init__(cmd='arc', **kwargs)
+        return 
+
+    #Override 
+    def arrange_me(self):
+        box = (0, 0)
+        return box 
+        
+    #Override 
+    def draw_me_impl(self, cr):
+        kwargs1 = kw.extract(kwargs=self.kwargs,
+            keys=['x', 'y', 'r', 'start', 'end', 'fill', 'source_rgb'])
+        crt.cr_arc(context=cr, **kwargs1) 
+        return 
+
+class DrawCircle(DrawCommandBase):
+    """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+    """
+    def __init__(self, **kwargs):
+        super().__init__(cmd='circle', **kwargs)
+        return 
+
+    #Override 
+    def arrange_me(self):
+        x = kw.get(self.kwargs, 'x', required=True)
+        y = kw.get(self.kwargs, 'y', required=True)
+        r = kw.get(self.kwargs, 'r', required=True)
+        box = (x-r, y-r, x+r, y+r)
+        return box 
+        
+    #Override 
+    def draw_me_impl(self, cr):
+        kwargs1 = kw.extract(kwargs=self.kwargs,
+                             keys=['x', 'y', 'r', 'fill', 'source_rgb'])
+        crt.cr_arc(context=cr, start=math.pi*0.0, end=math.pi*2.0, **kwargs1) 
+        return 
+
+    # """画盤（board）のクラス: 座標系オブジェクト
+
+    # Attributes: 
+    #     parent (Board): 親オブジェクト
+    #     xy (vec(float)): 親座標系での位置決めパラメータのベクタ (x,y)．位置指定パラメータ．
+    #     shape (vec(int)): 親座標系での自身の領域の形状(nx, ny)．位置指定パラメータ．
+    #     padding (float): 内側の余白
+    #     margin (float): 外側の余白
+    #     border=None (str): 境界の色
+    #     border_width=None (float): 境界の線幅
+    #     depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+    #     verbose (bool): ログ出力のフラグ
+
+    # Notes: 
+
+    # 	図の構築は次のように行う．
+
+    # 	* 生成後に，add(child)メソッドで，子となるBoardオブジェクトを追加する．
+    # 	* 描画時に，arrange()メソッドを呼び出すと，子Boardオブジェクトに再帰的に処理を行って，それらの包含矩形（bounding box, BOX）を計算し，与えられた配置ポリシーに従って，それらを自身の局所座標内に配置し，さらに自身の包含矩形を計算する．
+
+    # 	配置ポリシーは，次のものがある．
+
+    # 	* 現在，実装のもの．
+    # 	    + (0,0)を原点とする自身の局所座標系内で，子図形を局所座標の位置に配置する（locate）．原点(0,0)とすべての子の配置を含む包含長方形を求めて，これを自身の包含長方形とする
+
+    # 	* Locate: 局所座標内の絶対位置指定による配置する
+    # 	    + (0,0)を原点とする自身の局所座標系内で，子図形を局所座標の位置に配置する（locate）．
+    # 	    + すべての子の配置を含む包含長方形を求めて，これを自身の包含長方形とする．包含長方形の原点（左上角）oを配置原点xyとする．
+
+    # 	* Pack:　一次元の軸上に子図形を順番に並べる．
+    # 	    + 軸方向と，直交方向ごとに，外形を与えるか，与えずに配置後パックするかを決める．軸向の配置は，パックする場合は，t (touch):互いに外周が接するのみである．外形を与える場合は，e (even): 間隔均等に, c（center）: 中心均等にならべるが選べる．
+    # 	    + 軸と直行方向（上下方向）には，alignmentの指定に従い，そろえて配置する．
+
+    # 		+ 横軸並べ（horizontal, x-axis）の場合は，直行方向（上下方向）に関して，alignmentの指示（align=a, m, b）にしたがい，次の配置揃え指定ができる： a (above): 上端揃え，m (middle):中心そろえ，b (below):下端揃え．
+
+    # 		+ 縦軸並べ（vertical, y-axis）の場合は，直行方向（左右方向）に関して，alignmentの指示（align=l, m, r）にしたがい，次の配置揃え指定ができる： l (left): 左端揃え，m (middle):中心そろえ，r (right):右端揃え．
+
+    # 	* Grid: 二次元の直行格子上に子図形を順番に並べる．
+    # 	    + 格子点に対する子図形の配置は，軸と直行方向（左右方向）には，子図形のアンカー点が格子点に重なるように，揃えて配置する．アンカー点は，ac in {a,m,b} x {l,m,r} の8近傍で表現する．a (above): 上端揃え，m (middle):中心そろえ，b (below):下端揃え．l (left): 左端揃え，m (middle):中心そろえ，r (right):右端揃え．
+
+    # 	* Circle:　Packの変種として，円周上に子図形を順番に並べる
+    # 	    + 軸方向に，演習座標で絶対位置を与えるか，与えずに配置後，一次元に均等間隔にパックするかを決める．
+
+    # """
+
+# ## メイン文
+# if __name__ == '__main__':
+#     shape = (9,6)
+#     reg = ImageBoard(ratio=128, shape=shape, xy = (0.5, 0.5))
+#     print('reg: \n', vars(reg))
+    
+##EOF
+

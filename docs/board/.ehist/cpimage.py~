@@ -1,0 +1,788 @@
+#!/usr/bin/env python3 
+# coding: utf_8
+# cpimage.py
+"""Pillowライブラリを用いた基底の画版のパッケージ
+* 220815 created by Hiroki Arimura
+* based on pilimage.py
+"""
+import sys
+import os 
+sys.path.insert(0, os.path.abspath('../board'))
+import numpy as np
+import math
+import cairo
+
+import common as com 
+import kwargs as kw
+import vector as vec 
+import anchor as ac 
+import pixel as px
+# import pilfont
+
+DEBUG_PATH=True
+
+# #Pillow package
+# import PIL as pil
+# from PIL import Image
+# from PIL import ImageDraw
+# from PIL import ImageFont
+
+DEBUG_OPS = False
+
+#絶対サイズ
+DEFAULT_DISPLAY_SHAPE_PT = (640, 480) #デフォールトの画像サイズ
+
+#スタイルパラメータ
+#要設定．経験的
+DEFAULT_PEN_WIDTH_PT=4
+DEFAULT_DOT_WIDTH_PT=8 #px
+DEFAULT_CORNER_KIND = 'round'
+DEFAULT_ARROW_SHAPE=(1,3)
+RATIO_ARROW_HEAD_WIDTH = 4 ##矢印幅が線の幅の何倍か
+debug_native=False
+
+##=====
+# Old: 描画対象の矩形のクラス
+##=====
+
+DISPLAY_SHAPE = {
+    'QVGA': (320, 240),
+    'VGA' : (640, 480), 
+    'SVGA': (800, 600), 
+    'XGA' : (1024, 768), 
+    'WXGA': (1280, 800), 
+    'UXGA': (1600, 1200), 
+    'QXGA': (2048, 1536), 
+}
+
+#note: length
+#1inch = 2.54cm = 25.4mm
+#1pt = 1/72inch
+#実測：macbookpro13, retina, 2段大きめ:
+# - 1px = 0.6299 pt => 120dpi
+# - 1pt = 1.5875 = 1.6 px
+
+#==========
+#ヘルパー関数
+#==========
+
+def centered_box_shape(xy=None, width=None, anchor=None):
+    """矩形 xy とその幅（直径）を与えて，矩形の重心にアンカーを設定して配置した新しい矩形xy1を返す．
+
+    Args: 
+    	xy (rect): 矩形
+
+    	width (number): 幅
+
+    	anchor (str): アンカー文字列．方向を表す長さ2の文字列 (see anchor.py)
+
+    Returns: 
+    	rect: 新しい矩形 xy1
+
+    Examples: 
+    	例::
+    		kwargs1['xy'] = centered_box_shape(xy=xy, width=diam)
+    """
+    if anchor: 
+        com.ensure(ac.is_anchor_str(anchor),
+                   f'anchor={anchor} must be an anchor str!')
+    else:
+        anchor = 'mm'
+    istep = ac.make_point(anchor)
+    istep = (int(istep[0]), int(istep[1]))
+    width = int(width)
+    W = int(width-1)
+    p = [0,0]
+    q = [0,0]
+    #x-axis
+    if anchor[0]=='l':
+        p[0], q[0] = xy[0], xy[0]+W
+    elif anchor[0]=='m':
+        p[0], q[0] = xy[0]-int(0.5*W), xy[0]+-int(0.5*W)
+    elif anchor[0]=='r':
+        p[0], q[0] = xy[0]-W, xy[0]
+    else:
+        com.panic(f'no anchor[0]={anchor[0]} is allowed in {0}-axis!')
+    #y-axis
+    if anchor[1]=='a':
+        p[1], q[1] = xy[1], xy[1]+W
+    elif anchor[1]=='m':
+        p[1], q[1] = xy[1]-int(0.5*W), xy[1]+int(0.5*W)
+    elif anchor[1]=='b':
+        p[1], q[1] = xy[1]-W, xy[1]
+    else: 
+        com.panic(f'no anchor[1]={anchor[1]} is allowed in {1}-axis!')
+    xy1 = px.normalize_xy([tuple(p), tuple(q)])
+    if False:
+        com.log(f'@debug:outline: orig:xy={xy} width={width} W={W} => new:rect={ xy1  }')
+    return xy1
+
+
+#離散化
+def kwargs_round_px(kwargs=None, keys=None, verbose=False):
+    """キーワード引数辞書において，指定したキーを離散化する（px）
+    元の辞書に破壊的演算を行って，変更した辞書を返す．
+
+    Examples: 
+
+    	例．破壊的変更を行うので返り値はいらない::
+
+    	    kwargs_round_px(kwargs1, ['xy', 'width'])
+    """
+    if keys==None:
+        return kwargs
+    for key in keys:
+        if key in kwargs: 
+            kwargs[key] = vec.round_px(kwargs[key]) #整数化
+    return kwargs
+
+#==========
+#基盤画像系
+#==========
+
+class ImageBoard(com.Loggable):
+    count = 0  #count instance id 
+    
+    def __init__(self,
+                 dep_init=None, 
+                 imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
+                 format="pdf",   #出力ファイルフォーマット（拡張子 pdf, png）
+                 outfile="out",  #出力ファイル名（拡張子を除く）
+                 imagesize='XGA',#初期の画像サイズ
+                 verbose=False):
+        """実装レイヤーの画盤を生成するコンストラクタ．
+        Parameters
+        ----------
+        imgtype: str
+          画像フォーマット (cairo)
+        format: str
+          出力ファイルの描画フォーマット (cairo) in "pdf", "png"
+        imagesize: int 
+          以下のいずれか
+            'QVGA': (320, 240),
+            'VGA' : (640, 480), 
+            'SVGA': (800, 600), 
+            'XGA' : (1024, 768), 
+            'WXGA': (1280, 800), 
+            'UXGA': (1600, 1200), 
+            'QXGA': (2048, 1536), 
+        verbose: 
+          実行情報を表示する
+
+        Returns 
+        ----------
+
+        Atributes
+        ----------
+        """
+        #親Loggableの初期化
+        super().__init__(dep_init=dep_init, verbose=verbose)
+        #パラメータ
+        self.imgtype = imgtype
+        self.format  = format
+        self.outfile = outfile
+        self.imagesize = imagesize
+        if verbose:
+            self.repo(msg=f'ImageBoard.__init__(): { vars(self) }')
+
+        #==========
+        #準備
+        #==========
+        if verbose:
+            print(f'option: format={ self.format }')
+            
+        ## 出力ファイルフォーマット
+        if self.format=="png": 
+            OFILE_EXT = "png"
+        elif self.format=="pdf": 
+            OFILE_EXT = "pdf"
+        else: 
+            print(f'the file format={self.format} is not supported; instead use the default format={ "pdf"  }: ')
+            self.format = OFILE_EXT = "pdf" #default
+            
+        ## 出力ファイル名
+        if outfile:
+            mybody = self.outfile #本体名
+        else:
+            mybody = "out"
+        self.myoutfile = mybody + "." + OFILE_EXT #ファイル名
+
+        ##画像サイズ
+        if self.imagesize in DISPLAY_SHAPE:
+            dshape_ = DISPLAY_SHAPE[self.imagesize]
+            xsize_, ysize_ = dshape_[0], dshape_[1]
+        else:
+            xsize_, ysize_ = 1024, 768 #default XGA
+        
+        ## Cairoのサーフェースの生成
+        """ class cairo.ImageSurface(format, width, height)
+        Parameters:	
+          format – FORMAT of pixels in the surface to create
+          width – width of the surface, in pixels
+          height – height of the surface, in pixels
+        Returns:	
+          a new ImageSurface
+        Raises :	
+          MemoryError in case of no memory
+        """
+        if self.format == "png": 
+            self.ims = cairo.ImageSurface(cairo.FORMAT_ARGB32, xsize_, ysize_) #image surface
+        elif self.format == "pdf": 
+            self.ims = cairo.PDFSurface(self.myoutfile, xsize_, ysize_) #image surface
+        else:
+            panic(f'no such a file format={ self.format } is supported!')
+
+        ## CairoのContext (image handle)の生成
+        """ class cairo.Context(target)
+        Parameters:	target – target Surface for the context
+        Returns:	a newly allocated Context
+        Raises :	MemoryError in case of no memory
+        """
+        self.cr = cairo.Context(self.ims) 
+        return 
+                
+    def context(self):
+        """描画ハンドルを返す．
+        Args: 
+          
+        Returns: 
+          (cairo.Context) : Cairoの描画contextオブジェクト 
+        """
+        if self.cr == None:
+            com.panic('画像オブジェクトself.cr==None!')
+        return self.cr 
+
+    def show(self, noshow=False, verbose=False, depth=0):
+        """画像を表示する．
+        """
+        if noshow:
+            if verbose: self.repo(f'.show()@@: @Warning: skipping show() for pil.Image object due to flag noshow={ noshow }')
+            return 
+
+        #============
+        #表示
+        #============
+        if verbose: self.repo(f'ImageBoard.show()...')
+        if self.verbose:
+            print(f'@printing an image to "{ self.myoutfile }"...')
+        
+        if self.format=="png":
+            self.ims.write_to_png(self.myoutfile)
+        elif self.format=="pdf":
+            self.cr.show_page()
+        else:
+            panic(f'the file format={ self.format } is not supported!')
+        
+        return 
+            
+
+    # 基本：描画命令の転送
+    # 
+    def send_draw(self, cmd=None, kwargs=None, trans=None, verbose=False):
+        """基本：描画命令の転送を行う．
+
+        Args: 
+            cmd (str): 描画命令名の文字列
+            kwargs (dict): 描画命令のキーワードパラメータからなる辞書．
+            trans (nested tuple) : 変換行列の入れ子タプルによるリスト
+
+        Returns: 
+        	なし
+
+        描画命令は対 (cmd, kwargs)である．
+        transは変換命令の列である．
+
+        現在，pillow上で，次の描画命令を実装している．
+
+        * line: 直線を描く．
+        * rectangle: 長方形を描く．
+        * ellipse: 円と楕円を描く．
+        * arc: 円弧を描く．
+        * dot: 太丸を描く．
+        * text: テキストを書く．
+        * textbbox: テキストの包含矩形を求める．
+
+        本pilimageクラスに，新しい描画演算を実装する際は，次のように行う．
+
+        * 新しい描画演算を，pilimageクラスのメソッドfuncxxx(self, cmd, kwargs)として実装する．
+        * この関数は，pillowのnative描画演算を用いて，pillowの描画オブジェクトへのハンドルself.drawerに直接書き込む形で実装する．
+        * メソッドの引数は，関数名の文字列'cmdxxx'と，演算のキーワード引数の辞書**kwargsをとるものとする．
+        * これを，本関数のディスパッチの条件分岐に，次のようにして追加する::
+
+            if cmd=='line':
+                return self.line(depth+1, **kwargs)
+            ...
+            elif cmd=='cmdxxx':
+                return self.oprxxx(depth+1, **kwargs)
+            ...
+            else:
+                panic(f'no such a cmd={cmd}!: kwargs={kwargs}')
+        """
+        if self.verbose:
+            self.repo(f"ImageBoard.send_draw@@: cmd={cmd} kwargs={ kwargs } trans={ trans }")
+            
+        #演算のdispatch
+        com.ensure(type(cmd) is str, 'cmd={cmd} must be a string!')
+        if cmd=='line':
+            return self.line(**kwargs)
+        elif cmd=='rectangle':
+            return self.rectangle(**kwargs) 
+        elif cmd=='ellipse':
+            return self.ellipse(**kwargs)
+        elif cmd=='arc':
+            return self.arc(**kwargs)
+        elif cmd=='dot':
+            return self.dot(**kwargs)
+        elif cmd=='text':
+            return self.text(**kwargs)
+        elif cmd=='textbbox':
+            return self.textbbox(**kwargs)
+        else:
+            panic(f'no such a cmd={cmd}!: kwargs={kwargs}')
+            
+    
+    # キーワード引数辞書からの部分コピー
+    def extract_with_trans_px(self, kwargs=None, keys=None,
+                              trans=None, verbose=False):
+        """キーワード引数辞書から，新しい引数辞書を作成して返す．この際，
+        - keysのキーはそのまま抽出.
+        - transのキーはfuncで変換して抽出．
+        """
+        ### 内部関数：数値，点，点対を，pt単位px単位へ出る数値を長さ変換する
+        def geom_trans_(num_or_xy, verbose=False):
+            return vec.ex_geom_trans_gen(num_or_xy,
+                                         func=lambda num: com.point_to_pixel(num, ppi=self.ppi),
+                                         verbose=verbose)
+        
+        return kw.extract(kwargs=kwargs, keys=keys, trans=trans,
+                          func=geom_trans_, verbose=verbose)
+        
+    
+    def line(self, depth=0, **kwargs): 
+        """線分を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        Args: 
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * xy : list (with is_point_seq(xy)==True)
+                  a list of points [(x0,y0), (x1,y1)] in grid coordinate
+                * fill : str 
+                  a string represeting a color
+                * width : number 
+                  a number in pt
+                * joint : str 
+                  either 'curve' or None
+                * verbose (bool): ログ出力のフラグ．
+
+        Returns: 
+        	なし
+        """
+        xy = kw.get(kwargs, key='xy', required=True)
+        com.ensure(vec.is_rect(xy), f'xy={xy} must be a point list!')        
+        if ('verbose' in kwargs) and (kwargs['verbose']):
+            self.repo(f".line@@: kwargs={ kw.reduce(kwargs) }")
+
+        #引数抽出: xyとwidthをスケールする
+        kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy', 'width'], keys=['fill', 'joint'])
+        kwargs_round_px(kwargs1, ['xy', 'width'])
+            
+        ## 線分を描画する
+        if 'fill' in kwargs1: 
+            self.drawer.line(**kwargs1)
+
+        ##ラベルを描画する
+        if kw.contains(kwargs, key='label'): 
+            pass #ダミー
+        return
+
+    # 矩形を描く
+    def rectangle(self, px, py, width, height, **kwargs): 
+        """矩形を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        Args: 
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * px, py (int) : 
+                  (px, py) is the upper-left corners of the target rectangle
+                * width, height (int) : the width and height of the rectangle
+                * cmd (str) :  次のCairoの命令の一つ: 
+                    'stroke', 'fill', 
+                    'stroke_preserve', 
+                    'fill_preserve'の一つ
+                * source_rgb (tuple) : 色を表す実数の三つ組(r,g,b)
+                * line_width (float) : 線幅
+        	* verbose (bool): ログ出力のフラグ. 
+        Returns: 
+        	なし
+        """
+        print(f'@debug: rectangle: kwargs={kwargs}')
+        if True or kw.contains(kwargs, key='verbose'): 
+            self.repo(f'.rectangle@@: kwargs={kwargs}')
+
+        #目標領域xy
+        source_rgb = kw.get(kwargs, key='source_rgb')
+        if source_rgb:
+            if len(source_rgb)==3: 
+                self.cr.set_source_rgb(source_rgb[0], source_rgb[1], source_rgb[2])
+            elif len(source_rgb)==4: 
+                self.cr.set_source_rgba(source_rgb[0], source_rgb[1], source_rgb[2], source_rgb[3])
+            else:
+                panic(f'source_rgb must be (r,g,b) or (r,g,b,a)!: {source_rgb}')
+
+        ## 線幅
+        line_width = kw.get(kwargs, key='line_width')
+        if line_width: 
+            self.cr.set_line_width(line_width)
+
+        #長方形を描く
+        self.cr.rectangle(px, py, width, height)
+
+        #図形の書き出しをする
+        cmd= kw.get(kwargs, key='cmd', default='stroke')
+        print(f'@debug: rectangle: cmd={cmd}')
+        self.cr.stroke()
+        # self.process_stroke_or_fill(command=cmd)
+        return
+
+    def process_stroke_or_fill(command=None):
+        """図形描画後の書き出しを行う
+        Args: 
+          cmd (str) :  次のCairoの命令の一つ: 
+             'stroke', 'fill', 
+             'stroke_preserve', 
+             'fill_preserve'の一つ
+        """
+        if cmd:
+            if cmd=='stroke': 
+                context.stroke()
+            elif cmd=='fill': 
+                context.fill()
+            elif cmd=='stroke_preserve': 
+                context.stroke_preserve()
+            elif cmd=='fill_preserve': 
+                context.fill_preserve()
+            else: 
+                panic(f'no such cmd command={cmd}!')
+        else:
+            context.stroke()
+        return 
+
+
+    #======
+    # 長方形
+    #======
+    # notes: PIL.rectangleでは，outline指定の際，枠線は色のみ指定可能で，先幅は指定できない．そのため，fillが空でない時，塗りつぶし長方形をPIL.rectangleで描画し，outlineが空でない時，widthに指定の線幅で，枠線長方形をPIL.lineで4辺を描画するように実装した
+
+    # # 矩形を描く
+    # def rectangle(self, depth=0, **kwargs): 
+    #     """矩形を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+    #     Args: 
+    #         kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+    #             * xy : list (with is_point_seq(xy)==True)
+    #               a list of points [(x0,y0), (x1,y1)] in grid coordinate
+    #             * fill : str 
+    #               a string represeting a color
+    #             * width : number 
+    #               a number in pt
+    #             * outline : str 
+    #               a string represeting a color
+    #             * corner_kind : 'square' or 'round'
+    #               a string specifying the corner type (not in PIL)
+    #     	* verbose (bool): ログ出力のフラグ. 
+
+    #     Returns: 
+    #     	なし
+    #     """
+    #     if kw.contains(kwargs, key='verbose'): 
+    #         self.repo(f'.rectangle@@: kwargs={kwargs}')
+
+    #     #目標領域xy
+    #     xy_ = kw.get(kwargs, key='xy', required=True)
+    #     com.ensure(vec.is_rect(xy_), f'xy={xy_} must be a point list!')
+
+    #     #引数抽出: ptからpxへの変換を行う
+    #     kwargs_px = self.extract_with_trans_px(kwargs, trans=['xy', 'width'], keys=None)
+    #     kwargs_px = kwargs_round_px(kwargs_px, keys=['xy', 'width'])
+    #     kwargs_px['xy'] = px.xy_adjust_borders(vec.round_px(kwargs_px['xy']), xy_strict=kw.get(kwargs, key='xy_strict'))        
+
+    #     #塗りつぶされた長方形を描く
+    #     kwargs1 = kw.extract(kwargs_px, keys=['xy', 'width', 'fill']) 
+    #     if kw.contains(kwargs1, key='fill'): 
+    #         self.drawer.rectangle(**kwargs1)
+        
+    #     # la --- ra
+    #     #  |     | 
+    #     # lb --- rb
+        
+    #     #辺を描く: 
+    #     if kw.contains(kwargs, key='outline'):
+    #         self.rectangle_outlined(**kwargs_px)
+        
+    #     #端点の描画：かざり
+    #     if kw.contains(kwargs, key='corner_kind'):
+    #         self.rectangle_corners(**kwargs_px)
+        
+    #     return
+
+    # 矩形を描く
+    # la -- a -- ra
+    #  |          |
+    #  l          r 
+    #  |          | 
+    # lb -- b -- rb 
+    def rectangle_outlined(self, **kwargs_px):
+        """内部が透明な周囲の4辺だけからなる矩形を描画する．
+
+        Args: 
+            kwargs_px (dict): 通常の長方形描画のキーワードパラメータに加えて，次のキーワードパラメータを含む辞書．        
+        * outline (rect): 矩形の外周の色を表す文字列
+        * outline_kind (str): 矩形の外周の種類
+
+        Returns: 
+        	なし
+
+        * 引数には，rectangleに加えて，outline（色の文字列）, corner（色の文字列）, corner_kind（形状文字列）をもつ．
+
+        Notes: 
+
+        PIL.rectangleでは，outline指定の際，枠線は色のみ指定可能で，先幅は指定できない．そのため，fillが空でない時，塗りつぶし長方形をPIL.rectangleで描画し，outlineが空でない時，widthに指定の線幅で，枠線長方形をPIL.lineで4辺を描画するように実装した
+        """
+        #kwargs_pxは座標調整とpx化済み
+        if kw.contains(kwargs_px, key='verbose'): 
+            DEBUG_OPS and self.repo(f'@pilimage.rectangle_outlined: kwargs_px={kwargs_px}')
+        
+        kwargs1 = kw.extract(kwargs_px, keys=['xy', 'width', 'outline_kind', 'verbose']) 
+
+        #線分描画のパラメータを作成する
+        # kwargs_edges['xy']  = kw.get(kwargs1, key='xy', required=True)
+        kwargs1['fill'] = kw.get(kwargs_px, key='outline')
+        if kw.contains(kwargs1, 'width'): 
+            kwargs1['width']  = int(kw.get(kwargs1, key='width'))
+        else:
+            kwargs1['width']  = com.point_to_pixel(DEFAULT_PEN_WIDTH_PT, ppi=self.ppi)
+        #四辺を描画する
+        self.draw_outline_edge(side='a', **kwargs1)
+        self.draw_outline_edge(side='b', **kwargs1)
+        self.draw_outline_edge(side='l', **kwargs1)
+        self.draw_outline_edge(side='r', **kwargs1)
+        return 
+        
+    # 楕円を描く
+    def ellipse(self, depth=0, **kwargs): 
+        """円と楕円を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        Args: 
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * xy : list (with is_point_seq(xy)==True)
+                  a list of points [(x0,y0), (x1,y1)] in grid coordinate
+                * fill : str 
+                  a string represeting a color
+
+                * outline : str 
+                  a string represeting a color
+
+                * width : number 
+                  a number in pt
+                * align : str  
+                  either 'center' or others or None 
+        	* verbose (bool): ログ出力のフラグ. 
+
+        Returns: 
+        	なし
+        """
+        if kw.contains(kwargs, key='verbose'):
+            #kwargs_ = 
+            self.repo(f".ellipse@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+        #引数抽出
+        kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy', 'width'], keys=['fill', 'outline', 'align'])
+        kwargs1 = kwargs_round_px(kwargs1, ['xy', 'width'])                
+        kwargs1['xy'] = px.xy_adjust_borders(vec.round_px(kwargs1['xy']),
+                                     xy_strict=kw.get(kwargs, key='xy_strict'))
+        self.drawer.ellipse(**kwargs1)
+                    
+    # 円弧を描く
+    def arc(self, depth=0, **kwargs): 
+        """円と楕円を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        xy=None, start=None, end=None, fill=None, width=1, verbose=False
+
+        Args: 
+
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * xy (rect): a pair of points xy = [p, q] in grid coordinate
+
+                * start (number) : the angle of the starting point in degree (e.g. 30, 90, 180, ...). See note below. 
+
+                * end (number): the angle of the end point in degree (e.g. 30, 90, 180, ...). See note below. 
+
+                * fill (str): a string represeting a color
+
+                * width (number): a number in pt
+
+        	* verbose (bool): ログ出力のフラグ. 
+
+        Returns: 
+            なし
+
+        * In start and end, degree 0 means the direction of 3 o'clock (that of the x-coordinate). 
+
+        """
+        if kw.contains(kwargs, key='verbose'):
+            #kwargs_ = 
+            self.repo(f".arc@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+        #引数抽出
+        kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy', 'width'], keys=['fill', 'start', 'end'])
+        kwargs1 = kwargs_round_px(kwargs1, ['xy', 'width'])                
+        self.drawer.arc(**kwargs1)
+
+    # 太点を描く
+    def dot(self, depth=0, **kwargs):
+        """太点を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        Args: 
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * xy (point) : 太点の中心座標．a point xy=(x0,y0) in grid coordinate
+                  indicating the center of a circle
+
+                * diameter (number ): the diameter of a dot (in pt).
+
+                * fill (str): 色を表す文字列．a string represeting a color
+
+                * outline (str): 輪郭線の色．これが非Noneならば，輪郭線だけで書く．
+                  a string represeting a color
+
+                * width (number): 太点の直径（単位はペン幅）. the width of outline if outline is non-None
+
+                * verbose (bool): ログ出力のフラグ．
+
+        Returns: 
+            なし
+        """
+        if kw.contains(kwargs, key='verbose'):
+            #kwargs_ = 
+            self.repo(f".dot@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+        #引数抽出:
+        kwargs1 = self.extract_with_trans_px(kwargs, keys=['fill', 'width', 'outline'])
+        #中心点と直径から配置形状xyを求める
+        xy = kw.get(kwargs, key='xy', required=True)
+        com.ensure((vec.is_point(xy)), f'xy={xy} must be a point!')
+        diam = kw.get(kwargs, key='diameter', default=DEFAULT_DOT_WIDTH_PT) 
+        kwargs1['xy'] = centered_box_shape(xy=xy, width=diam)
+
+        if DEBUG_OPS and kw.contains(kwargs, key='verbose'): 
+            self.repo(f'.dot@@: kwargs1={kwargs1}')
+        #note: 自身のellipse関数で処理するので，xyとwidthはpt座標系で良い．
+        self.ellipse(**kwargs1)
+            
+            
+    # テキストを描く
+    def text(self, depth=0, **kwargs): 
+        """テキストを描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        Args: 
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * xy : tuple (with is_point(xy)==True)
+                  a point (x0,y0) in grid coordinate
+                * text : str 
+                  a text to dislay. 
+                * fill : str 
+                  a string represeting a color
+                * size : str
+                  a string representing the size of a font such as 'scriptsize', 'small', 'regular', 'large', 'huge'. See `pilfont.py`. 
+                * anchor : str
+                  a string A in {a,m,b}x{l,m,r} representing the location of an anchor point. 
+
+                * verbose (bool): ログ出力のフラグ．
+
+        Returns: 
+        	なし
+
+        Note: The anchor feature of PIL has the form of {a,m,b}x{l,m,r,t,s,d}, where 
+
+        * horizontal axis (from left to right): 
+            - l:left, m:middle, r:right
+
+        * vertical axis (from top to bottom): 
+            - a: ascender (top of a line)
+            - t:top, m:middle, s:baseline, b:bottom (of a font)
+            - d: descender (bottom of a line)
+
+        The following features are same in the features of PIL with the same names: 
+
+             spacing, align ('left', 'right')
+             direction, features, language, 
+             stroke_width=0, stroke_fill, 
+             embedded_color (True or False),
+
+        """
+        ## フォント辞書を設定する
+        if not kw.contains(kwargs, key='font'):
+            if kw.contains(kwargs, key='size'): size = kwargs['size']
+            else: size = 'regular'
+            kwargs['font'] = self.fontbase.lookup_font_by_size(size)
+        ## 引数
+        if kw.contains(kwargs, key='verbose'):
+            #kwargs_ = kw.extract(kwargs, keys=['xy'], reduced=True)
+            self.repo(f".text@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+        #引数抽出
+        kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy'], keys=['text', 'font', 'size', 'fill', 'anchor', 'align', 'direction' ])
+        self.drawer.text(**kwargs1)  ## テキストを描画する
+        return 
+        
+    # テキストのbounding boxを返す
+    def textbbox(self, depth=0, **kwargs): 
+        """テキストの最小包含長方形を返す．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+        Args: 
+            kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+                * xy : tuple (with is_point(xy)==True)
+                  a point (x0,y0) in grid coordinate
+                * text : str 
+                  a text to dislay. 
+                * size : str
+                  a string representing the size of a font such as 'scriptsize', 'small', 'regular', 'large', 'huge'. See `pilfont.py`. 
+                * anchor : str
+                  a string A in {a,m,b}x{l,m,r} representing the location of an anchor point. 
+
+                * verbose (bool): ログ出力のフラグ．
+
+        Returns: 
+        	rect: テキストの最小包含矩形 bbox = ((x0, y0), (x1, y1)). 
+
+        The following features are same to the textbbox command in PIL: 
+
+             spacing, align ('left', 'right')
+             direction, features, language, 
+             stroke_width=0, stroke_fill, 
+             embedded_color (True or False),
+
+        """
+        if not kw.contains(kwargs, key='font'):
+            if kw.contains(kwargs, key='size'): size = kwargs['size']
+            else: size = 'regular'
+            kwargs['font'] = self.fontbase.lookup_font_by_size(size)
+        ## 引数
+        if kw.contains(kwargs, key='verbose'):
+            #kwargs_ = 
+            self.repo(f".textbbox@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+        #引数抽出
+        kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy'], keys=['text', 'font', 'size', 'anchor', 'align', 'direction', ])
+        x0, y0, x1, y1 = self.drawer.textbbox(**kwargs1)
+        if kw.contains(kwargs, key='relative'): 
+            bbox = ((0, 0), (x1-x0, y1-y0))
+        else:
+            bbox = ((x0, y0), (x1, y1)) 
+        return bbox
+
+    ##===============================
+    ## 210717: ここまで．各描画演算を完成させる
+    ##===============================
+                    
+#EOF

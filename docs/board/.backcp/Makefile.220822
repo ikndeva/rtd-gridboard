@@ -1,0 +1,53 @@
+# makefile
+
+.SUFFIXES: .py .pdf .png .exp 
+
+.py.exp:
+	python3 $*.py $*.pdf 
+
+## 
+IMGFILE=test1.pdf
+NOSHOW=
+#NOSHOW=-n 
+
+## test new: adjustment of outlined rectangles
+btest1:
+	python3 btest1.py $(NOSHOW) -p 576 -s 3:2 -w 1
+	# python3 btest1.py -p 48 -s 4:4 -w 1 -o rect
+
+btest2:
+	python3 btest2.py $(NOSHOW) -p 144 -s 4:4 -w 8 -o line
+
+btest3:
+	python3 btest3.py $(NOSHOW) -p 72
+
+btest4:
+	for i in 1 2 3 4 5 ; do python3 btest3.py $(NOSHOW)  -p 72 ; done
+
+btest: test1 test2 test3 test4 test5
+
+## クラス図とパッケージ図
+## required: [pip] pylint (pyreverse), [brew] graphviz (dot)
+## クラス図とパッケージ図を生成する
+class:
+	pyreverse -k -o pdf board
+
+##
+color_chart: 
+	python3 color_chart.py
+
+##
+TARGET=test1.exp 
+
+all: $(TARGET)
+
+clean:
+	rm -f  *~ *.pdf *.png $(TARGET)
+
+cleanall:
+	make clean
+	rm -fr __pycache__ 
+
+
+## EOF
+

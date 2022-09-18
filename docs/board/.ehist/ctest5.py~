@@ -1,0 +1,144 @@
+# coding: utf_8
+# btest1.py
+# 画盤モジュールのテスト
+import sys
+from argparse import ArgumentParser
+import cairo 
+import math 
+
+import common as com 
+import vector as vec 
+import crtool 
+import cboard as bd
+import cimage as pim
+
+verbose = True
+
+#色
+fancy = ['lightskyblue', 'lightgreen', 'lightgrey']
+solid = ['red', 'lightcoral', 'orange', 'darkorchid', 'royalblue', ]
+
+#画像の解像度をppi (pixel per inch)で設定する
+#myppi = 1024
+#myppi = 572
+
+##=====
+## コマンドライン引数
+##=====
+CMD_NAME = (__file__.split('/'))[-1]
+
+def reading_args_and_options():
+    USAGE_STR = f'Usage: python3 { CMD_NAME } OPTIONS '
+    ap = ArgumentParser(usage=USAGE_STR)
+    ## 
+    # ap.add_argument('args', type=str,
+    #                 ##note: デフォールトはpositional argなのでdestは不要
+    #                 help='sequence of numbers')
+    ## options: 
+    ## noshow
+    ap.add_argument('-n', '--noshow', action='store_true', default=False, 
+                    help='supreess to displaying graphics')
+    ## verbose 
+    ap.add_argument('-v', '--verbose', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## 
+    args = ap.parse_args()
+    return args, ap
+
+
+##======
+## メイン文
+##======
+
+if __name__ == '__main__':
+    #コマンドラインの引数とオプションの読み込み
+    opt, ap = reading_args_and_options()
+
+    #parameters
+    verbose=False
+
+    # 位置指定による2D配置のテスト
+    #画像枠の生成
+    CV = bd.Canvas(outfile="out",
+                   imagesize='QVGA',
+                   verbose=True)
+
+    pim = CV.getImageBoard() ##ImageBoardオブジェクト
+    cr = pim.context()
+
+    #============
+    #描画: Board
+    #============
+    dskip = 20
+    margin= dskip*0.5
+    hnum = 5
+    vnum = math.ceil((len(crtool.MYCOL) / hnum))
+    line_width = 1
+    cr.set_line_width(line_width)
+    mygrey=crtool.MYCOL['grey50']
+
+    #全体の余白を取る
+    cr.translate(margin, margin)
+    
+    #マーカーを格子に配置
+    hspan, vspan = 50, 50
+    # hspan, vspan = 100, 100
+    for i in range(hnum+1): 
+        for j in range(vnum+1):
+            px, py = hspan*i, vspan*j
+            crtool.cr_draw_marker(px, py, r=2, context=cr,
+                                  source_rgb=mygrey)
+            #crtool.cr_text(px, py, msg=f'({px},{py})', source_rgb=crtool.MYCOL['grey25'], fsize=5, context=cr)
+            cr.stroke()
+
+    #色見本の描画を開始する．
+    cr.save() 
+
+    #色見本を格子に配置
+    i = 0
+    bspan = 0.25*hspan
+    cskip = hspan*0.5 - bspan*0.5
+    cr.translate(cskip, cskip)
+    # cr.translate(dskip, dskip)
+    cr.save() #最初の行（水平モード）を開始する．
+    for col, rgb in crtool.MYCOL.items():
+        crtool.cr_set_source_rgb(source_rgb=rgb, context=cr)
+        #矩形
+        crtool.cr_rectangle(0.0, 0.0, bspan, bspan, fill='fill',
+                            source_rgb=None,
+                            edge_rgb=mygrey,
+                            context=cr)
+        # cr.rectangle(0.0, 0.0, bspan, bspan)
+        crtool.cr_text(0.0, bspan, msg=f'{ col }', source_rgb=mygrey, context=cr)
+        # crtool.cr_text(0.0, bspan, msg=f'{ col }', source_rgb=rgb, context=cr)
+        cr.fill()
+
+        #水平モードで右に移動する
+        cr.translate(hspan, 0.0)
+        i += 1
+        if i % hnum == 0:
+            cr.restore() #前の行（水平モード）を終わる
+
+            #垂直モードで下に移動する
+            cr.translate(0.0, 1.0*vspan)
+            
+            cr.save()    #次の行（水平モード）を開始する．
+            # for i_ in range(hnum):
+            #     cr.translate((-1.0)*hspan, 0.0)
+                
+    cr.restore() #最後の行（水平モード）を終わる
+
+    #色見本の描画を終了する．
+    cr.restore() 
+    pass 
+    
+
+    #============
+    #印刷
+    #============
+    CV.show(noshow=opt.noshow)
+    pass 
+
+##EOF
+
+

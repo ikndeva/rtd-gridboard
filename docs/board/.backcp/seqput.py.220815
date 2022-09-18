@@ -1,0 +1,40 @@
+            
+
+    # 描画可能な要素列を受け取り，画像ボードに表示する．
+    def sequence_put(self, xy=None, seq=None, anchor='mm',
+                     rotate=False, option={}, 
+                     header_xy=None, header_text=None, header_option={}
+                     ):
+        """描画可能な要素列を受け取り，表示する: 
+        - xy = (i,j): 開始点の格子座標
+        - seq： 拡張for文でとり出せる任意の名前文字列をもつ要素の列
+        - img: PillowImageBoardの格子画像ボードオブジェクト
+        - rotate: 水平のままか，垂直に回転するか．Trueならば，xとy座標を入れ返す（True or False）
+        """
+        ## 開始座標を設定する
+        if xy: 
+            i_beg, j_beg = xy[0], xy[1]
+        else: 
+            i_beg, j_beg = 0, 0
+                    
+        ##点の回転関数を設定する
+        if rotate: 
+            coord = vec.coord_rotate 
+        else:
+            coord = vec.coord_normal
+                    
+        #note: position 0
+        if header_text:
+            if header_xy==None: hi,hj = (-1, 0)
+            else: hi,hj = header_xy
+            self.text(xy=coord((i_beg+hi, j_beg+hj)), text=header_text,
+                      anchor=anchor, **header_option)
+        ## 系列を描く
+        i, j = i_beg + 0, j_beg  #note: position start from 1
+        for val in seq:
+            self.text(xy=coord((i, j)), text=str(val),
+                      anchor=anchor, **option)
+            i = i + 1
+        return 
+        
+

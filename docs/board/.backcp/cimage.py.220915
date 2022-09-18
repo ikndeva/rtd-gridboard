@@ -1,0 +1,510 @@
+#!/usr/bin/env python3 
+# coding: utf_8
+# cimage.py
+"""Pillowライブラリを用いた基底の画版のパッケージ
+* 220815 created by Hiroki Arimura
+* based on pilimage.py
+"""
+import sys
+import os 
+sys.path.insert(0, os.path.abspath('../board'))
+import numpy as np
+import math
+import cairo
+
+#private
+import common as com 
+import kwargs as kw
+import crtool
+import loggable as log 
+
+DEBUG_PATH=True
+DEBUG_OPS = False
+
+#スタイルパラメータ
+#要設定．経験的
+# DEFAULT_PEN_WIDTH_PT=4
+# DEFAULT_DOT_WIDTH_PT=8 #px
+# DEFAULT_CORNER_KIND = 'round'
+# DEFAULT_ARROW_SHAPE=(1,3)
+# RATIO_ARROW_HEAD_WIDTH = 4 ##矢印幅が線の幅の何倍か
+# debug_native=False
+
+##=====
+# Old: 描画対象の矩形のクラス
+##=====
+
+#note: length
+#1inch = 2.54cm = 25.4mm
+#1pt = 1/72inch
+#実測：macbookpro13, retina, 2段大きめ:
+# - 1px = 0.6299 pt => 120dpi
+# - 1pt = 1.5875 = 1.6 px
+
+#==========
+#ヘルパー関数
+#==========
+
+#==========
+#基盤画像系
+#==========
+
+class ImageBoard(log.Loggable):
+    count = 0  #count instance id 
+    
+    def __init__(self,
+                 dep_init=None, 
+                 imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
+                 format="pdf",   #出力ファイルフォーマット（拡張子 pdf, png）
+                 outfile="out",  #出力ファイル名（拡張子を除く）
+                 display_size=None, 
+                 # imagesize='XGA',#初期の画像サイズ
+                 # portrait=False, #画像サイズが縦長か？
+                 verbose=False):
+        """実装レイヤーの画盤を生成するコンストラクタ．
+        Args : 
+          imgtype (str) : 画像フォーマット (cairo)
+          format (str) : 出力ファイルの描画フォーマット (cairo) in "pdf", "png"
+          display_size (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`
+          verbose (bool) : 実行情報を表示する
+
+        Returns : 
+        """
+        #親Loggableの初期化
+        super().__init__(dep_init=dep_init, verbose=verbose)
+        #パラメータ
+        self.imgtype = imgtype
+        self.format  = format
+        self.outfile = outfile
+        self.display_size = display_size
+        if verbose:
+            self.repo(msg=f'ImageBoard.__init__(): { kw.reduce(vars(self)) }')
+
+        #==========
+        #準備
+        #==========
+        if verbose:
+            print(f'option: format={ self.format }')
+            
+        ## 出力ファイルフォーマット
+        if self.format=="png": 
+            OFILE_EXT = "png"
+        elif self.format=="pdf": 
+            OFILE_EXT = "pdf"
+        else: 
+            print(f'the file format={self.format} is not supported; instead use the default format={ "pdf"  }: ')
+            self.format = OFILE_EXT = "pdf" #default
+            
+        ## 出力ファイル名
+        if outfile:
+            mybody = self.outfile #本体名
+        else:
+            mybody = "out"
+        self.myoutfile = mybody + "." + OFILE_EXT #ファイル名
+
+        ##画像サイズ
+        com.ensure(com.is_sequence_type(self.display_size, elemtype=(int, float)),
+                   f'display_size must be a pair of numbers: {display_size}')
+        
+        ## Cairoのサーフェースの生成
+        """ class cairo.ImageSurface(format, width, height)
+        Parameters:	
+          format – FORMAT of pixels in the surface to create
+          width – width of the surface, in pixels
+          height – height of the surface, in pixels
+        Returns:	
+          a new ImageSurface
+        Raises :	
+          MemoryError in case of no memory
+        """
+        if self.format == "png": 
+            self.ims = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+                                          self.display_size[0],
+                                          self.display_size[1]) #image surface
+        elif self.format == "pdf": 
+            self.ims = cairo.PDFSurface(self.myoutfile,
+                                        self.display_size[0],
+                                        self.display_size[1]) #image surface
+        else:
+            panic(f'no such a file format={ self.format } is supported!')
+
+        ## CairoのContext (image handle)の生成
+        """ class cairo.Context(target)
+        Parameters:	target – target Surface for the context
+        Returns:	a newly allocated Context
+        Raises :	MemoryError in case of no memory
+        """
+        self.cr = cairo.Context(self.ims) 
+        return 
+                
+    def context(self):
+        """描画ハンドルを返す．
+        Args: 
+          
+        Returns: 
+          (cairo.Context) : Cairoの描画contextオブジェクト 
+        """
+        if self.cr == None:
+            com.panic('画像オブジェクトself.cr==None!')
+        return self.cr 
+
+    #============
+    #表示
+    #============
+    def show(self, noshow=False, verbose=False, depth=0):
+        """画像を表示する．
+        """
+        if noshow:
+            if verbose: self.repo(f'.show()@@: @Warning: skipping show() for pil.Image object due to flag noshow={ noshow }')
+            return 
+
+        if verbose:
+            self.repo(f'ImageBoard.show()...')
+            print(f'@printing an image to "{ self.myoutfile }"...')
+        
+        if self.format=="png":
+            self.ims.write_to_png(self.myoutfile)
+        elif self.format=="pdf":
+            self.cr.show_page()
+        else:
+            panic(f'the file format={ self.format } is not supported!')
+        
+        return 
+            
+
+    # # 基本：描画命令の転送
+    # # 
+    # def send_draw(self, cmd=None, kwargs=None, trans=None, verbose=False):
+    #     """基本：描画命令の転送を行う．
+
+    #     Args: 
+    #         cmd (str): 描画命令名の文字列
+    #         kwargs (dict): 描画命令のキーワードパラメータからなる辞書．
+    #         trans (nested tuple) : 変換行列の入れ子タプルによるリスト
+
+    #     Returns: 
+    #     	なし
+
+    #     描画命令は対 (cmd, kwargs)である．
+    #     transは変換命令の列である．
+
+    #     現在，pillow上で，次の描画命令を実装している．
+
+    #     * line: 直線を描く．
+    #     * rectangle: 長方形を描く．
+    #     * arc: 円弧を描く．
+    #     * text: テキストを書く．
+    #     * text_extent: テキストの配置情報を返す．
+
+    #     本pilimageクラスに，新しい描画演算を実装する際は，次のように行う．
+
+    #     * 新しい描画演算を，Cairo.Contextのメソッドfuncxxx(self, cmd, kwargs)として実装する．
+    #     * この関数は，native描画演算を用いて，pillowの描画オブジェクトへのハンドルself.drawerに直接書き込む形で実装する．
+    #     * メソッドの引数は，関数名の文字列'cmdxxx'と，演算のキーワード引数の辞書**kwargsをとるものとする．
+    #     * これを，本関数のディスパッチの条件分岐に，次のようにして追加する::
+
+    #         if cmd=='line':
+    #             return self.line(depth+1, **kwargs)
+    #         ...
+    #         elif cmd=='cmdxxx':
+    #             return self.oprxxx(depth+1, **kwargs)
+    #         ...
+    #         else:
+    #             panic(f'no such a cmd={cmd}!: kwargs={kwargs}')
+    #     """
+    #     if self.verbose:
+    #         self.repo(f"ImageBoard.send_draw@@: cmd={cmd} kwargs={ kwargs } trans={ trans }")
+            
+    #     #演算のdispatch
+    #     com.ensure(type(cmd) is str, 'cmd={cmd} must be a string!')
+    #     if cmd=='move_to':
+    #         return self.move_to(**kwargs)
+    #     elif cmd=='line_to':
+    #         return self.line_to(**kwargs)
+    #     elif cmd=='rectangle':
+    #         return self.rectangle(**kwargs) 
+    #     elif cmd=='arc':
+    #         return self.arc(**kwargs)
+    #     elif cmd=='text':
+    #         return self.text(**kwargs)
+    #     elif cmd=='text_extent':
+    #         return self.text_extent(**kwargs)
+    #     else:
+    #         panic(f'no such a cmd={cmd}!: kwargs={kwargs}')
+            
+    
+    # # # キーワード引数辞書からの部分コピー
+    # # def extract_with_trans_px(self, kwargs=None, keys=None,
+    # #                           trans=None, verbose=False):
+    # #     """キーワード引数辞書から，新しい引数辞書を作成して返す．この際，
+    # #     - keysのキーはそのまま抽出.
+    # #     - transのキーはfuncで変換して抽出．
+    # #     """
+    # #     ### 内部関数：数値，点，点対を，pt単位px単位へ出る数値を長さ変換する
+    # #     def geom_trans_(num_or_xy, verbose=False):
+    # #         return vec.ex_geom_trans_gen(num_or_xy,
+    # #                                      func=lambda num: com.point_to_pixel(num, ppi=self.ppi),
+    # #                                      verbose=verbose)
+        
+    # #     return kw.extract(kwargs=kwargs, keys=keys, trans=trans,
+    # #                       func=geom_trans_, verbose=verbose)
+        
+        
+    # #============
+    # #便利関数
+    # #============
+    # def set_context_parameters(self, **kwargs):
+    #     """Cairo.Contextの修飾情報を設定する．
+    #     ラッパー関数：`crtool.cr_set_context_parameters()`に転送する．
+    #     """
+    #     return crtool.cr_set_context_parameters(context=self.cr, **kwargs)
+
+    # def process_stroke_or_fill(self, **kwargs):
+    #     """図形描画後の書き出しを行う．
+    #     ラッパー関数：`crtool.cr_set_context_parameters()`に転送する．
+    #     """
+    #     # kwargs0 = kw.extract(kwargs=kwargs, keys=['fill', 'preserve'], verbose=verbose)
+    #     # if False:
+    #     #     print(f'@debug: rectangle: fill_cmd={fill_cmd}')
+    #     return crtool.cr_process_stroke_or_fill(context=self.cr, **kwargs)
+    
+    # def move_to(self, x, y, **kwargs): 
+    #     """ペンを移動する．native演算による実装．
+    #     Args: 
+    #       x, y (float) : x- and y-coordinate of the center
+    #     Returns: 
+    #       (Rect) : 包含矩形
+    #     """
+    #     if True or kw.contains(kwargs, key='verbose'): 
+    #         self.repo(f'.move_to@@: kwargs={kwargs}')
+    #     self.set_context_parameters(**kwargs)
+    #     return crtool.cr_move_to(x, y, **kw.extract(kwargs=['context'], keys=keys))
+
+    # def line_to(self, x, y, **kwargs): 
+    #     """ペンを移動する．native演算による実装．
+    #     Args: 
+    #       x, y (float) : x- and y-coordinate of the center
+    #     Returns: 
+    #       (Rect) : 包含矩形
+    #     """
+    #     if True or kw.contains(kwargs, key='verbose'): 
+    #         self.repo(f'.line_to@@: kwargs={kwargs}')
+    #     self.set_context_parameters(**kwargs)
+    #     return crtool.cr_line_to(x, y, **kw.extract(kwargs=['context'], keys=keys))
+
+    # # 矩形を描く
+    # def rectangle(self, px, py, width, height, **kwargs): 
+    #     """矩形を描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+    #     Args: 
+    #       px (float) : x-coordinate of the center
+    #       py (float) : y-coordinate of the center
+    #       width, height (float) : 
+    #       ** kwargs (dict): 次のサブルーチンが処理する辞書．
+    #           - set_context_parameters()
+    #           - process_stroke_or_fill()
+    #             * fill (str) :  次のCairoの命令の一つ: 
+    #             * source_rgb (tuple) : 色を表す実数の三つ組(r,g,b)
+    #             * line_width (float) : 線幅
+    #     	* verbose (bool): ログ出力のフラグ. 
+    #     Returns: 
+    #       (Rect) : 包含矩形
+    #     """
+    #     print(f'@debug: rectangle: kwargs={kwargs}')
+    #     if True or kw.contains(kwargs, key='verbose'): 
+    #         self.repo(f'.rectangle@@: kwargs={kwargs}')
+
+    #     self.set_context_parameters(**kwargs)
+
+    #     #長方形を描く
+    #     self.cr.rectangle(px, py, width, height)
+
+    #     #図形の書き出しをする
+    #     self.process_stroke_or_fill(**kwargs)
+    #     return (px, py, px+width, py+height)
+
+    # # 円弧を描く
+    # def arc(self, x, y, r, start, end, **kwargs): 
+    #     """円弧を描く．native演算による実装．
+
+    #     Args: 
+    #       x, y (float) : x- and y-coordinate of the center
+    #       r (float) : radius 
+    #       start, end (float) : radius 
+    #       ** kwargs (dict): 次のサブルーチンが処理する辞書．
+    #           - set_context_parameters()
+    #           - process_stroke_or_fill()
+    #             * fill (str) :  次のCairoの命令の一つ: 
+    #             * source_rgb (tuple) : 色を表す実数の三つ組(r,g,b)
+    #             * line_width (float) : 線幅
+    #     	* verbose (bool): ログ出力のフラグ. 
+    #     Returns: 
+    #       (Rect) : 包含矩形
+    #     """
+    #     print(f'@debug: arc: kwargs={kwargs}')
+    #     if True or kw.contains(kwargs, key='verbose'): 
+    #         self.repo(f'.arc@@: kwargs={kwargs}')
+
+    #     self.set_context_parameters(**kwargs)
+
+    #     #円弧を描く
+    #     self.cr.new_sub_path() #for beginning with arc(). See pycairo manual
+    #     self.cr.arc(x, y, r, start, end)
+
+    #     #図形の書き出しをする
+    #     self.process_stroke_or_fill(**kw.extract(kwargs=kwargs, keys=['context', 'fill', 'preserve']))
+    #     # self.process_stroke_or_fill(**kwargs0)
+    #     return (x-r, y-r, x+r, y+r)
+
+    # # テキストを描く
+    # def text(self, x, y, msg=None, ffamily="Sans", fsize=10, **kwargs): 
+    #     """円弧を描く．native演算による実装．
+
+    #     Args: 
+    #       x, y (float) : x- and y-coordinate of the box
+    #       msg    (str) : a string to write 
+    #       ffamily (str): font family name 
+    #       fsize   (int): font size, default 10pt
+    #       ** kwargs (dict): 次のサブルーチンが処理する辞書．
+    #           - set_context_parameters()
+    #           - process_stroke_or_fill()
+    #             * source_rgb (tuple) : 色を表す実数の三つ組(r,g,b)
+    #     	* verbose (bool): ログ出力のフラグ. 
+    #     Returns: 
+    #       (Rect) : 包含矩形
+    #     """
+    #     print(f'@debug: text: kwargs={kwargs}')
+    #     if True or kw.contains(kwargs, key='verbose'): 
+    #         self.repo(f'.text@@: kwargs={kwargs}')
+
+    #     self.set_context_parameters(**kwargs)
+
+    #     if ffamily: 
+    #         self.cr.select_font_face(ffamily,
+    #                             cairo.FONT_SLANT_NORMAL,
+    #                             cairo.FONT_WEIGHT_NORMAL)
+    
+    #     ## テキストの描画情報を取得
+    #     if fsize: 
+    #         self.cr.set_font_size(fsize) #default: font_size = 10
+        
+    #     if msg:
+    #         fx, fy, width, height, dx, dy = self.cr.text_extents(msg)
+    #     else:
+    #         panic(f'msg must be non-None!')
+    
+    #     ## テキストを描画
+    #     self.cr.move_to(x, y)
+    #     self.cr.show_text(msg)
+    
+    #     #図形の書き出しをする
+    #     self.process_stroke_or_fill(**kwargs)
+    #     return (x, y, x+width, y+height)
+
+            
+    # # テキストを描く
+    # def text(self, depth=0, **kwargs): 
+    #     """テキストを描く．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+    #     Args: 
+    #         kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+    #             * xy : tuple (with is_point(xy)==True)
+    #               a point (x0,y0) in grid coordinate
+    #             * text : str 
+    #               a text to dislay. 
+    #             * fill : str 
+    #               a string represeting a color
+    #             * size : str
+    #               a string representing the size of a font such as 'scriptsize', 'small', 'regular', 'large', 'huge'. See `pilfont.py`. 
+    #             * anchor : str
+    #               a string A in {a,m,b}x{l,m,r} representing the location of an anchor point. 
+
+    #             * verbose (bool): ログ出力のフラグ．
+
+    #     Returns: 
+    #     	なし
+
+    #     Note: The anchor feature of PIL has the form of {a,m,b}x{l,m,r,t,s,d}, where 
+
+    #     * horizontal axis (from left to right): 
+    #         - l:left, m:middle, r:right
+
+    #     * vertical axis (from top to bottom): 
+    #         - a: ascender (top of a line)
+    #         - t:top, m:middle, s:baseline, b:bottom (of a font)
+    #         - d: descender (bottom of a line)
+
+    #     The following features are same in the features of PIL with the same names: 
+
+    #          spacing, align ('left', 'right')
+    #          direction, features, language, 
+    #          stroke_width=0, stroke_fill, 
+    #          embedded_color (True or False),
+
+    #     """
+    #     ## フォント辞書を設定する
+    #     if not kw.contains(kwargs, key='font'):
+    #         if kw.contains(kwargs, key='size'): size = kwargs['size']
+    #         else: size = 'regular'
+    #         kwargs['font'] = self.fontbase.lookup_font_by_size(size)
+    #     ## 引数
+    #     if kw.contains(kwargs, key='verbose'):
+    #         #kwargs_ = kw.extract(kwargs, keys=['xy'], reduced=True)
+    #         self.repo(f".text@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+    #     #引数抽出
+    #     kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy'], keys=['text', 'font', 'size', 'fill', 'anchor', 'align', 'direction' ])
+    #     self.drawer.text(**kwargs1)  ## テキストを描画する
+    #     return 
+        
+    # # テキストのbounding boxを返す
+    # def text_extent(self, depth=0, **kwargs): 
+    #     """テキストの最小包含長方形を返す．描画命令のpillowのdrawオブジェクトのnative演算による実装．
+
+    #     Args: 
+    #         kwargs (dict): 次のキーワードパラメータを含む辞書．
+
+    #             * xy : tuple (with is_point(xy)==True)
+    #               a point (x0,y0) in grid coordinate
+    #             * text : str 
+    #               a text to dislay. 
+    #             * size : str
+    #               a string representing the size of a font such as 'scriptsize', 'small', 'regular', 'large', 'huge'. See `pilfont.py`. 
+    #             * anchor : str
+    #               a string A in {a,m,b}x{l,m,r} representing the location of an anchor point. 
+
+    #             * verbose (bool): ログ出力のフラグ．
+
+    #     Returns: 
+    #     	rect: テキストの最小包含矩形 bbox = ((x0, y0), (x1, y1)). 
+
+    #     The following features are same to the text_extent command in PIL: 
+
+    #          spacing, align ('left', 'right')
+    #          direction, features, language, 
+    #          stroke_width=0, stroke_fill, 
+    #          embedded_color (True or False),
+
+    #     """
+    #     if not kw.contains(kwargs, key='font'):
+    #         if kw.contains(kwargs, key='size'): size = kwargs['size']
+    #         else: size = 'regular'
+    #         kwargs['font'] = self.fontbase.lookup_font_by_size(size)
+    #     ## 引数
+    #     if kw.contains(kwargs, key='verbose'):
+    #         #kwargs_ = 
+    #         self.repo(f".text_extent@@: kwargs={ kw.extract(kwargs, keys=['xy'], reduced=True) }")
+    #     #引数抽出
+    #     kwargs1 = self.extract_with_trans_px(kwargs, trans=['xy'], keys=['text', 'font', 'size', 'anchor', 'align', 'direction', ])
+    #     x0, y0, x1, y1 = self.drawer.text_extent(**kwargs1)
+    #     if kw.contains(kwargs, key='relative'): 
+    #         bbox = ((0, 0), (x1-x0, y1-y0))
+    #     else:
+    #         bbox = ((x0, y0), (x1, y1)) 
+    #     return bbox
+
+    ##===============================
+    ## 210717: ここまで．各描画演算を完成させる
+    ##===============================
+                    
+#EOF

@@ -1,0 +1,132 @@
+# btest1.py
+# 画盤モジュールのテスト
+# public 
+import sys
+from argparse import ArgumentParser
+import cairo 
+import math 
+
+#private
+import common as com 
+import crtool as crt
+import cboard as bd
+# import cimage as cim #loaded from cboard
+
+verbose = True
+
+#色
+fancy = ['lightskyblue', 'lightgreen', 'lightgrey']
+solid = ['red', 'lightcoral', 'orange', 'darkorchid', 'royalblue', ]
+
+##=====
+## コマンドライン引数
+##=====
+CMD_NAME = (__file__.split('/'))[-1]
+
+def reading_args_and_options():
+    USAGE_STR = f'Usage: python3 { CMD_NAME } OPTIONS '
+    ap = ArgumentParser(usage=USAGE_STR)
+    ## 
+    # ap.add_argument('args', type=str,
+    #                 ##note: デフォールトはpositional argなのでdestは不要
+    #                 help='sequence of numbers')
+    ## options: 
+    ## noshow
+    ap.add_argument('-n', '--noshow', action='store_true', default=False, 
+                    help='supreess to displaying graphics')
+    ## boundingbox
+    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## verbose 
+    ap.add_argument('-v', '--verbose', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## 
+    args = ap.parse_args()
+    return args, ap
+
+
+##======
+## メイン文
+##======
+
+if __name__ == '__main__':
+    #コマンドラインの引数とオプションの読み込み
+    opt, ap = reading_args_and_options()
+
+    #parameters
+    verbose=False
+
+    # 位置指定による2D配置のテスト
+    #画像枠の生成
+    CV = bd.Canvas(outfile="out",
+                   imagesize='QVGA',
+                   boundingbox=opt.boundingbox, 
+                   verbose=True)
+
+    cr = CV.context()
+    #cim = CV.get_image_board() ##ImageBoardオブジェクト
+    #cr = cim.context()
+
+    #============
+    #描画: Board
+    #============
+    dskip = 20
+    margin= dskip*0.5
+    hnum = 5
+    vnum = math.ceil((len(crt.MYCOL) / hnum))
+    line_width = 1
+    cr.set_line_width(line_width)
+    mygrey=crt.MYCOL['grey50']
+
+    #全体の余白を取る
+    cr.translate(margin, margin)
+    
+    #マーカーを格子に配置
+    hspan, vspan = 50, 50
+    # hspan, vspan = 100, 100
+    for i in range(hnum+1): 
+        for j in range(vnum+1):
+            px, py = hspan*i, vspan*j
+            crt.cr_draw_marker(px, py, r=2, context=cr,
+                                  source_rgb=mygrey)
+            #crt.cr_text(px, py, msg=f'({px},{py})', source_rgb=crt.MYCOL['grey25'], fsize=5, context=cr)
+            cr.stroke()
+
+    #色見本を格子に配置
+    i = 0
+    bspan = 0.25*hspan
+    cr.save()
+    cskip = hspan*0.5 - bspan*0.5
+    cr.translate(cskip, cskip)
+    # cr.translate(dskip, dskip)
+    for colname, rgb in crt.MYCOL.items():
+        crt.cr_set_source_rgb(source_rgb=rgb, context=cr)
+        ## 矩形 指定色rgbの幅bspan x bspan の矩形を配置
+        crt.cr_rectangle(0.0, 0.0, bspan, bspan, fill='fill',
+                            source_rgb=None,
+                            edge_rgb=mygrey,
+                            context=cr)
+        ## 下にbspanだけ下げて，テキストcolnameを配置
+        crt.cr_text(0.0, bspan, msg=f'{ colname }', source_rgb=mygrey, context=cr)
+        cr.fill()
+        cr.translate(hspan, 0.0)
+        i += 1
+        if i % hnum == 0:
+            for i_ in range(hnum):
+                cr.translate((-1.0)*hspan, 0.0)
+            cr.translate(0.0, 1.0*vspan)
+                
+    cr.restore()
+
+    pass 
+    
+
+    #============
+    #印刷
+    #============
+    CV.show(noshow=opt.noshow)
+    pass 
+
+##EOF
+
+

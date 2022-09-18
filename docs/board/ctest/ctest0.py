@@ -1,0 +1,106 @@
+# coding: utf_8
+# btest1.py
+# 画盤モジュールのテスト
+import sys
+from argparse import ArgumentParser 
+import common as com 
+# ##
+import cboard as bd
+
+verbose = True
+
+#色
+fancy = ['lightskyblue', 'lightgreen', 'lightgrey']
+solid = ['red', 'lightcoral', 'orange', 'darkorchid', 'royalblue', ]
+
+#画像の解像度をppi (pixel per inch)で設定する
+#myppi = 1024
+#myppi = 572
+
+##=====
+## コマンドライン引数
+##=====
+CMD_NAME = (__file__.split('/'))[-1]
+
+def reading_args_and_options():
+    USAGE_STR = f'Usage: python3 { CMD_NAME } OPTIONS '
+    ap = ArgumentParser(usage=USAGE_STR)
+    ## 
+    # ap.add_argument('args', type=str,
+    #                 ##note: デフォールトはpositional argなのでdestは不要
+    #                 help='sequence of numbers')
+    ## options: 
+    ## noshow
+    ap.add_argument('-n', '--noshow', action='store_true', default=False, 
+                    help='supreess to displaying graphics')
+    ## boundingbox
+    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## verbose 
+    ap.add_argument('-v', '--verbose', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## 
+    args = ap.parse_args()
+    return args, ap
+
+#=====
+#便利関数
+#=====
+def pos(xy): 
+    return vec.geom_trans_gen(xy, 
+                func=lambda p: vec.point_apply(p, 
+                        lambda orig:(orig * edgelen)))
+
+##======
+## メイン文
+##======
+
+if __name__ == '__main__':
+    #コマンドラインの引数とオプションの読み込み
+    opt, ap = reading_args_and_options()
+
+    #parameters
+    # -p 576 -s 3:2 -w 1
+    verbose=False
+    fontsize = 12
+    ppi = 576
+    shape = (3,2)
+    width = 40
+    uspan = 50
+
+    # 位置指定による2D配置のテスト
+    #画像枠の生成
+    CV = bd.Canvas(ppi=ppi,
+                   fontsize_regular_pt=fontsize,
+                   imagesize='QVGA', 
+                   #imagesize='QXGA', 
+                   boundingbox=opt.boundingbox, 
+                   verbose=True)
+
+    #図形を書く
+    px, py = 10, 10
+    qx, qy = px + width, py + width
+    CV.rectangle(xy=[(px, py), (qx, qy)], fill='red', verbose=True)
+    px, py = px + uspan, py
+    qx, qy = px + width, py + width
+    CV.rectangle(xy=[(px, py), (qx, qy)], fill='green', verbose=True)
+    px, py = px + uspan, py
+    qx, qy = px + width, py + width
+    CV.rectangle(xy=[(px, py), (qx, qy)], fill='blue', verbose=True)
+    px, py = px + uspan, py
+    qx, qy = px + width, py + width
+
+    #============
+    #描画
+    #============
+    if opt.noshow:
+        print('@warning: main.opt.noshow={opt.noshow}: this is a dry run...')
+        noshow_ = True
+    else:
+        noshow_ = False
+    CV.show(noshow=noshow_)
+    pass 
+
+##EOF
+
+

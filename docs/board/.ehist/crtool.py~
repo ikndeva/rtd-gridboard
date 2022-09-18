@@ -1,0 +1,273 @@
+# coding: utf_8
+# btest1.py
+# 画盤モジュールのテスト
+import sys
+import cairo 
+import math 
+
+import common as com 
+
+verbose = True
+
+#色
+fancy = ['lightskyblue', 'lightgreen', 'lightgrey']
+solid = ['red', 'lightcoral', 'orange', 'darkorchid', 'royalblue', ]
+
+MYCOL={
+        ## pure 
+        'red':(1,0,0),
+        'blue':(0,0,1),
+        'lightgreen':(0,1,0),
+        ## basic
+        'yellow':(1,1,0),
+        'magenta':(1,0,1),
+        'cyan':(0,1,1),
+        ## dark 
+        'darkgreen':(0,0.5,0),
+        'darkred':(0.5,0,0),
+        'darkblue':(0,0,0.5),
+        ## alias
+        'green':(0,0.5,0),
+        'brown':(0.5,0,0),
+        'navy':(0,0,0.5),
+        'orange':(1.0 - 0.125, 0.0 + 0.125, 0.0),
+        ## bw
+        'black':(0,0,0), 
+        # 'grey0':(0,0,0), 
+        'grey10':(0.10,0.10,0.10), 
+        'grey25':(0.25,0.25,0.25), 
+        'grey50':(0.50,0.50,0.50), 
+        'grey75':(0.75,0.75,0.75), 
+        # 'grey100':(1,1,1), 
+        'white':(1,1,1),
+}
+
+#=====
+#便利関数
+#=====
+
+def cr_set_source_rgb(source_rgb=None, context=None):
+    """contextに色source_rgbを設定する．
+    source_rgbはアルファなし(r,g,b)とアルファあり(r,g,b,a)の両方を受け付ける．
+    """
+    if source_rgb: 
+        rgb = source_rgb
+    else:
+        rgb = (0.5,0.5,0.5) #grey50
+    if rgb:
+        if len(rgb)==3: 
+            context.set_source_rgb(rgb[0], rgb[1], rgb[2])
+        elif len(rgb)==4: 
+            context.set_source_rgba(rgb[0], rgb[1], rgb[2], rgb[3])
+        else:
+            panic(f'source_rgb must be (r,g,b) or (r,g,b,a)!: {rgb}')
+
+def cr_set_context_parameters(context=None,
+                              source_rgb=None, 
+                              line_width=None,
+                              ffamily=None, fsize=None,
+                              **kwargs):
+    """Cairo.Contextの修飾情報を設定する．
+    Returns : 
+      なし
+    """
+    com.ensure(context!=None, 'context must be non-None!')
+    #===== 共通
+    ## 色設定
+    if source_rgb:
+        cr_set_source_rgb(source_rgb=source_rgb, context=context)
+    #===== 図形
+    ## 線幅
+    if line_width: 
+        context.set_line_width(line_width)
+
+    #===== テキスト
+    ## フォントファミリー
+    if ffamily: 
+        context.select_font_face(ffamily,
+                            cairo.FONT_SLANT_NORMAL,
+                            cairo.FONT_WEIGHT_NORMAL)
+    ## フォントサイズ
+    if fsize: 
+        context.set_font_size(fsize) #default: font_size = 10
+    #===== 終わり
+    return 
+
+def cr_set_text_parameters(**kwargs):
+    """テキストの修飾情報を設定する．ラッパー関数．
+    Returns : 
+      なし
+    """
+    return cr_set_context_parameters(**kwargs) 
+
+def cr_process_stroke_or_fill(context=None, fill=None, preserve=None):
+    """図形描画後の書き出しを行う
+    Args: 
+      cmd (str) :  次のCairoの命令の一つ: 
+         'stroke', 'fill', 
+         'stroke_preserve', 
+         'fill_preserve'の一つ
+      preserve (bool) : 演算後にパスを保存するならYes, しないならNo
+    """
+    if fill:
+        if fill=='stroke':
+            if preserve: 
+                context.stroke_preserve()
+            else:
+                context.stroke()
+        elif fill=='fill': 
+            if preserve:
+                context.fill_preserve()
+            else:
+                context.fill()
+        elif fill=='stroke_preserve': 
+            context.stroke_preserve()
+        elif fill=='fill_preserve': 
+            context.fill_preserve()
+        else: 
+            panic(f'no such fill command={fill}!')
+    else:
+        context.stroke()
+    return 
+
+#=====
+#描画関数
+#=====
+
+def cr_move_to(x, y, context=None):
+    """ペンを移動する．
+    Args: 
+      x, y (float) : x- and y-coordinate of the center
+    Returns: 
+      (Rect) : 包含矩形
+    """
+    context.move_to(x, y)
+    box = (x, y) 
+    return box
+
+def cr_line_to(x, y, context=None):
+    """ペンを移動する．
+    Args: 
+      x, y (float) : x- and y-coordinate of the center
+    Returns: 
+      (Rect) : 包含矩形
+    """
+    context.line_to(x, y)
+    box = (x, y) 
+    return box
+
+def cr_rectangle(x, y, width, height,  
+                 context=None, 
+                 fill=None,
+                 source_rgb=None, edge_rgb=None,
+                 pen_width=None):
+    """矩形を描く
+    Args: 
+      x, y (float) : x- and y-coordinate of the center
+      width,  (float) : width and height 
+      fill (bool) : fill (True) or stroke (False, default)
+    Returns: 
+      (Rect) : 包含矩形
+    """
+    ## 色設定
+    if source_rgb: 
+        cr_set_source_rgb(source_rgb=source_rgb, context=context)
+    if edge_rgb:
+        #fill and edge
+        context.rectangle(x, y, width, height)
+        context.fill_preserve()
+        cr_set_source_rgb(source_rgb=edge_rgb, context=context)
+        context.stroke()
+    else:
+        #fill only
+        context.rectangle(x, y, width, height)
+        cr_process_stroke_or_fill(fill=fill, context=context)
+    box = (x, y, x + width, y + height) 
+    return box
+
+def cr_arc(x, y, r, start, end,
+           context=None, fill=None, source_rgb=None):
+    """円盤を描く
+    Args: 
+      x (float) : x-coordinate of the center
+      y (float) : y-coordinate of the center
+      r (float) : radius 
+      start, end (float) : the starting and ending angle in radian
+      fill (bool) : fill (True) or stroke (False, default)
+    Returns: 
+      (Rect) : 包含矩形
+    """
+    ## 色設定
+    # if True:
+    #     print(f'debug: context.arc{ (x, y, r, start, end) }')
+    if source_rgb: 
+        cr_set_source_rgb(source_rgb=source_rgb, context=context)
+    context.arc(x, y, r, start, end)
+    cr_process_stroke_or_fill(fill=fill, context=context)
+    box = ((x - r, y - r), (x + r, y + r))
+    return box
+
+def cr_circle(x, y, r,
+              context=None, fill=None, source_rgb=None):
+    """円盤を描く
+    Args: 
+      x (float) : x-coordinate of the center
+      y (float) : y-coordinate of the center
+      r (float) : radius 
+      fill (bool) : fill (True) or stroke (False, default)
+    Returns: 
+      (Rect) : 包含矩形
+    """
+    context.new_sub_path() #for beginning with arc(). See pycairo manual
+    box = cr_arc(x, y, r, math.pi*0, math.pi*2.0, fill=fill,
+                 source_rgb=source_rgb, context=context)
+    return box
+
+# font family     
+# ffamily = "Sans"
+# ffamily = "Times New Roman"
+
+def cr_text_extent(ox, oy, msg = None, context=None,
+                   ffamily=None, fsize=None, source_rgb=None):
+    """テキストの配置情報を事前に取得する．
+    Returns : 
+      (tuple) : テキストの描画情報の組 (x, y, width, height, dx, dy)
+      - x, y : テキストの配置位置．原点は左上
+      - width, height : テキストの包含矩形のサイズ
+      - dx, dy : グリフ位置の増分
+    """
+    if ffamily or fsize or source_rgb:
+        cr_set_text_parameters(context=context, ffamily=ffamily, fsize=fsize, source_rgb=source_rgb)
+        # cr_set_context_parameters(context=context, ffamily=ffamily, fsize=fsize, source_rgb=source_rgb)
+    ## テキストの描画情報
+    if msg:
+        x, y, width, height, dx, dy = context.text_extents(msg)
+    else:
+        panic(f'msg must be non-None!')
+    return x, y, width, height, dx, dy
+
+def cr_text(ox, oy, msg = None,
+            context=None, ffamily="Sans", fsize=10, source_rgb=None):
+    """テキストを描画する．
+    """
+    if ffamily or fsize or source_rgb:
+        cr_set_context_parameters(context=context, ffamily=ffamily, fsize=fsize, source_rgb=source_rgb)
+    ## テキストの描画情報
+    if msg:
+        fx, fy, width, height, dx, dy = context.text_extents(msg)
+    else:
+        panic(f'msg must be non-None!')
+    ## テキストを描画
+    context.move_to(ox, oy + height)
+    context.show_text(msg)
+    return fx, fy, width, height, dx, dy
+
+def cr_draw_marker(ax, ay, r=None, context=None, source_rgb=None, **kwargs):
+    if not r: 
+        r = 5  #円の半径
+    cr_circle(ax, ay, r, fill='fill',
+              source_rgb=source_rgb, context=context) ## 点
+    return 
+
+
+##EOF

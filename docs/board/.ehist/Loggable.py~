@@ -1,0 +1,268 @@
+#!/usr/bin/env python3 
+# coding: utf_8
+# loggable.py 
+"""ボードの基本機能を提供するモジュール．
+
+* loggableモジュールは，ボードオブジェクトが，複合画像の木のノードとしてもつ最低限の機能を提供する．
+* 複合画像を表すボードオブジェクトは木構造をなす．
+* Loggableオブジェクトは，次の機能を提供する: 
+
+	* 親子情報の管理
+	* ログ出力の管理
+"""
+import sys
+import common as com
+import kwargs as kw
+
+#==========
+# 基底オブジェクトのクラス
+#==========
+class Loggable:
+     """ボードの最基底クラス．
+     複合画像を表すボードオブジェクトの木のノードがもつ最低限の機能を提供する．
+
+     Args: 
+
+           dep_init (int) : 深さの初期値．default=None. 
+
+           tags (str, list(str)) : タグ文字列またはタグ文字列のリスト．タグ文字列のリストは，オブジェクトの属性`tags`に保持され，実装者と利用者により，各種の用途に用いることができる．default=None. 
+
+           verbose (bool) : デバッグ用出力のフラグ．default=False. 
+
+           **kwargs : 任意のオプション引数．オブジェクトの属性`kwargs`に保持されて，実装者と利用者により，各種の用途に用いることができる．
+
+     Attributes: 
+
+           tags (str, list(str)) : タグ文字列またはタグ文字列のリスト．実装者と利用者により，各種の用途に用いることができる．
+
+           kwargs (dict) : オプション引数の辞書．オブジェクトの属性`kwargs`に保持されて，実装者と利用者により，各種の用途に用いることができる．
+     """
+     _freeLID = 0 #loggable id (lid)
+     
+     def __init__(self,
+                  dep_init=None,
+                  tags=None, 
+                  verbose=False,
+                  **kwargs):
+          """
+          生成するコンストラクタ．
+          Args : 
+            depth (int): デバッグ用の入れ子の深さを表す非負整数．デフォールトdepth=0
+            verbose (bool): 実行情報を表示する
+            **kwargs (dict) : 他のキーワード引数．上位クラスに渡される．
+
+          Atributes : 
+            depth (int): デバッグ用のボード構成の入れ子の深さを表す非負整数．
+            verbose (bool): 実行情報を表示する．
+            id (int): ボードオブジェクトの連番．0で始まる．
+            kwargs (dict) : キーワードを格納する辞書．キーワードは任意のものを使って良い．ボードの内部変数の階層化のためであり，関数`kw.get(kwargs, key)`を用いてアクセスする．
+          """
+          ## 引数
+          self.depth = dep_init #dep_init can be None, which means `undefined`.
+          self.verbose = verbose
+          self.tags = None
+          self.kwargs  = kwargs 
+
+          ## 内部変数
+          self.parent = None # 親オブジェクト
+          self.id = Loggable._freeLID;          
+          Loggable._freeLID += 1
+
+          #タグ
+          if tags != None:
+               self.addTag(tags)
+          return 
+
+     #=====
+     # キーワード辞書
+     #=====
+     def vars(self):
+          """自身のオブジェクトの属性からなる辞書を返す．
+          その際，未定義（値がNone）の属性はスキップする．
+          """
+          return kw.reduce(vars(self))
+
+     def myinfo(self, depth=False, ord=False, tag=False):
+          """便利関数．ログ用に，Boardオブジェクトの情報の文字列を返す．
+          """
+          bstr = self.__class__.__name__
+          if depth: 
+               bstr += f"[{ self.depth }]"
+          if ord: 
+               bstr += f"[{ self.ord_ }]"
+          if tag and self.tag: 
+               bstr += f"['{ self.tag }']"
+          return bstr
+
+     #=====
+     # 親子関係
+     #=====
+     
+     def fetch(self, key=None, default=None, verbose=False):
+          """自分の先祖にフィールド`key`が定義されているボードがあれば，そのような直近の先祖での値を返す．もしそのような先祖がなければ，`default`が指定されていれば，その値を返し，それ以外ならば`None`を返す．
+          
+          Args: 
+            key (str) : 検索するキー文字列
+            default (Any) : キーをもつ先祖が見つからない時に返すデフォールト値
+          
+          Returns:
+            (Any) : キーをもつ最近先祖におけるキーの値
+          """
+          com.ensure(key != None, f'fetch: key={key} must not be None!')
+          com.ensure(default != None, f'fetch: default={default} must not be None!')
+          if verbose:
+               self.repo(msg=f'@debug:fetch: {self.myinfo()}.fetch:'+
+                         f' key={key} => {key in vars(self)}: against'+
+                         f' vars={kw.extract(self.vars(), deleted=["children_"])}')
+          if key in vars(self) and (vars(self)[key] != None):
+               return vars(self)[key]
+          elif self.parent == None or not (isinstance(self.parent, Loggable)):
+               return default
+          else: ## assuming isinstance(self.parent, Loggable)
+               val_ = self.parent.fetch(key=key, default=default)
+               if verbose: self.repo(msg=f'@debug:fetch: {self.myinfo()}.fetch => val={val_}')
+               com.ensure(val_ != None, f'fetch: val={val_} must not be None!')
+               return val_
+
+     #exp 親子関係の管理
+     def inherit_child(self, child=None): 
+          """親子関係の管理．
+
+          TODO: 
+          最実装すること．
+          """
+          com.ensure(isinstance(child, Loggable),
+                 f'child={child} must be a subclass of Loggable!')
+          ##親のLoggable属性を子に引き継ぐ．
+          child.verbose = child.verbose or self.verbose
+          
+          ##親ボードを設定
+          if child.parent != None: 
+               panic(f'parent is already defined! parent={child.parent}')
+          else:
+               child.parent = self
+               # 深さ設定
+               if self.depth != None and (type(self.depth) in (int, float)): 
+                    child.rec_set_depth(dep=int(self.depth)+1,
+                                        par_verbose=self.verbose) 
+                    #notes: 部分木をアタッチする場合があるので，再帰的に設定する
+          return 
+        
+     def rec_set_depth(self, dep=None, par_verbose=None):
+          """再帰的に，自分と全ての子孫に正しく深さを設定する．
+          Args: 
+          dep (int) : 自分に設定すべき深さ．親の深さ + 1
+
+          Note: 
+            仮定：self.depth==Noneの場合は，全ての子孫のdepth==None
+          
+          TODO: 
+          最実装すること．
+          """
+          #print(f'{ "| "*dep }{ X.myinfo()} \tdepth={ X.depth }')
+          if self.depth!=None:
+               return
+          elif dep==None:
+               return
+          else: 
+               self.depth = dep
+          
+          if par_verbose!=None and self.verbose==None:
+               self.verbose = par_verbose
+          
+          for _, value in self.children_indexed():
+               _, child = value
+               if isinstance(child, Loggable):
+                    child.rec_set_depth(dep=dep+1, par_verbose=par_verbose)
+          return
+
+     #=====
+     # タグ
+     #=====
+     def getTags(self):
+          """タグ文字列のリストを返す．
+          Returns:
+            (list(str)) : タグ文字列のリスト
+          """
+          return self.tags
+     
+     def addTag(self, tags):
+          """タグ文字列を追加する．
+          Args: 
+            tags (str) : タグ文字列．任意のグルーピングに用いる．
+          
+          Returns:
+            (Loggable) : 自分自身．いわゆる'cascade object call interface' のため．
+          """
+          # com.ensure(isinstance(tags, str), f'tags="{ tags }" must be either a str or a list of strs!')
+          if self.tags == None:
+               self.tags = []
+          if isinstance(tags, str):
+               self.tags.append(tags)
+          elif is_sequence_type(tags, elemtype=str):
+               for a_tag in tags:
+                    if not (a_tag in self.tags): 
+                         self.tags.append(a_tag)
+          else:
+               panic(f'tags={tags} must have as type str or list(str))!: {type(tags)}')
+          return self #for cascade object interface
+   
+     #=====
+     # ログ出力
+     #=====
+     def repo(self, msg=None, header=True, isChild=False, file=sys.stderr):
+          """入れ子深さを考慮したレポート文字列を出力する．
+
+          Args: 
+            dep=0 (int): 入れ小深さ
+            msg=None (str):  出力する文字列
+            header=True (str):  出力するヘッダー文字列．ふつうは関数名 'methodname'
+            file (outstream): 出力ストリーム．デフォールトsys.stderr
+
+          Examples: 
+            ::
+
+            	self.repo(depth, msg=f'.send_draw: cmd={cmd} kwargs={kwargs1}')
+
+         """
+          if not isinstance(msg, str):
+               print(f'warning: common.repo: msg="{msg} (type={type(msg)})" must be str!')
+               
+          if self.depth != None:
+               dep_ = self.depth
+          else:
+               dep_ = 0
+          if isChild:
+               dep_ += 1
+          if not (isinstance(dep_, int)):
+               print(f'warning: common.py.repo: dep_={ dep_ } must be of int type!')     
+          h=f'{ "| " * dep_ }'	#入れ小深さに対応する柱文字列を作成
+          if header: 
+               h += f'@{ self.myinfo() }'
+               if len(msg) >= 1 and not (msg[0] in ('.', '_')):
+                    h += ': '
+                    print(f'{h}{msg}', file=file) 
+
+     ##=====
+     ## 表示
+     ##=====
+     def dump(self, dep=0, file=sys.stdout):
+          """Loggableオブジェクトの構造を印刷する．
+          Args : 
+            B (Loggable) : ボードオブジェクトの根
+          """
+          print(f'{ "| "*dep }{ self.myinfo()}\t'+
+                f' depth={ self.depth }'+f' ord_={ self.ord_ }'
+                f' verbose={ self.verbose }', end='', file=file)
+          if self.getTags() != None: 
+               print(f' tags={self.getTags()}', end='', file=file)
+          print('', file=file)
+          for idx, pair in self.children_indexed():
+               trans, child = pair #分解
+               if isinstance(child, Loggable):
+                    child.dump(dep=dep+1, file=file)
+          return
+
+     pass 
+
+## EOF

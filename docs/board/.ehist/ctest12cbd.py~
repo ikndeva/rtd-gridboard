@@ -1,0 +1,214 @@
+# coding: utf_8
+# ctest8cbd.py
+# - アンカー点の機構を実装する．
+# - 
+import sys
+from argparse import ArgumentParser
+import cairo 
+import math 
+
+import common as com 
+import vector as vec 
+import crtool as crt
+import cboard as bd
+import cimage as cim
+
+verbose = True
+
+
+#色
+fancy = ['lightskyblue', 'lightgreen', 'lightgrey']
+solid = ['red', 'lightcoral', 'orange', 'darkorchid', 'royalblue', ]
+
+#画像の解像度をppi (pixel per inch)で設定する
+#myppi = 1024
+#myppi = 572
+
+##=====
+## コマンドライン引数
+##=====
+CMD_NAME = (__file__.split('/'))[-1]
+
+def reading_args_and_options():
+    USAGE_STR = f'Usage: python3 { CMD_NAME } OPTIONS '
+    ap = ArgumentParser(usage=USAGE_STR)
+    ## 
+    # ap.add_argument('args', type=str,
+    #                 ##note: デフォールトはpositional argなのでdestは不要
+    #                 help='sequence of numbers')
+    ## options: 
+    ## noshow
+    ap.add_argument('-n', '--noshow', action='store_true', default=False, 
+                    help='supreess to displaying graphics')
+    ## boundingbox
+    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## verbose 
+    ap.add_argument('-v', '--verbose', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## 
+    args = ap.parse_args()
+    return args, ap
+
+
+##======
+## メイン文
+##======
+
+if __name__ == '__main__':
+    #コマンドラインの引数とオプションの読み込み
+    opt, ap = reading_args_and_options()
+
+    #parameters
+    verbose=False
+
+    # 位置指定による2D配置のテスト
+    #画像枠の生成
+    CV = bd.Canvas(outfile="out",
+                   imagesize='QVGA',
+                   portrait=False,
+                   boundingbox=opt.boundingbox,
+                   max_perturb=bd.DEFAULT_LINE_WIDTH*4.0, 
+                   verbose=opt.verbose)
+
+    cim = CV.getImageBoard() ##ImageBoardオブジェクト
+    cr = cim.context()
+
+    #====== テスト ==============================
+    dskip = 50
+    hspan, vspan = 50, 50
+    hnum, vnum = 5, 4
+    line_width = 2 
+    hair_line_width = 0.5 
+    mygrey = crt.MYCOL['grey50']
+    ow, oh = hspan*0.5, vspan*0.5
+    COLS = list(crt.DARKCOL.values())
+
+    cr.set_line_width(line_width)
+
+    #====== テスト ==============================
+    # cboard.Board の構成実験
+    LEAF_LIST = [] #オブジェクト木の葉の集合
+    
+    ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
+    DrawingPanel = bd.Board(tags='DrawingPanel')
+    # DrawingPanel = bd.Board().addTag('DrawingPanel')
+    CV.put(trans=crt.Translate(x=dskip, y=dskip), child=DrawingPanel)
+
+    GridBoard = bd.GridLocator(num_x=hnum, num_y=vnum,
+                               margin=hspan*0.25, 
+                               tags='GridBoard')
+    DrawingPanel.put(child=GridBoard)
+    
+    ## row
+    oid = 0
+    for i in range(vnum):
+        for j in range(hnum):
+            #C = bd.AnchorWrapper(anchor_x='left', anchor_y='top')
+            C = bd.AnchorWrapper(anchor_x='center', anchor_y='mid')
+            GridBoard.put(i=i, j=j, child=C)
+            
+            rgb = COLS[oid % vnum ]
+            D = bd.DrawRectangle(x=0, y=0, 
+                                 width=oh, height=oh,
+                                 source_rgb=rgb,
+                                 tags=f'Box_{i}_{j}')
+            C.put(trans=crt.Translate(), child=D)
+            LEAF_LIST.append(D)
+            oid += 1
+    # CV.arrange()
+
+    # #====== Markerのテスト ==============================
+    # shape = GridBoard.get_shape()
+    # MarkerBoard = bd.Board(tags='MarkerBoard')
+    # DrawingPanel.put(child=MarkerBoard)
+    # for idx, value in GridBoard.children_indexed():
+    #     trans, child = value
+    #     # x, y = child.get_anchor_point(anchor_x='top', anchor_y='left')
+    #     #print(f'@debug:marker:idx={idx} xy={x,y} trans={trans}')
+    #     print(f'@debug:marker:idx={idx} trans={trans}')
+    #     #描画オブジェクト: circle
+    #     M = bd.DrawCircle(x=0, y=0, r=2.0,
+    #                       line_width=2, 
+    #                       rgb=crt.MYCOL['red'],
+    #                       tags=f'Marker_{i}_{j}')
+    #     MarkerBoard.put(trans=trans, child=M)
+    # # CV.arrange()
+    # #====== Markerのテスト ==============================
+    
+
+    # #====== Markerのテスト ==============================
+    # # 格子点にマーカーを置く
+    # ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
+    # MarkerBoard = bd.Board(tags='MarkerBoard')
+    # DrawingPanel.put(child=MarkerBoard)
+    # shape = GridBoard.get_shape()
+    # for i in range(shape[0]): #row
+    #     for j in range(shape[1]): #column
+    #         #描画オブジェクト: circle
+    #         M = bd.DrawCircle(x=0, y=0, r=2.0,
+    #                           line_width=0.5, 
+    #                           rgb=crt.MYCOL['red'],
+    #                           tags=f'Marker_{i}_{j}')
+    #         MarkerBoard.put(trans=crt.Translate(x=hspan*i, y=vspan*j), child=M)
+    #         # DrawingPanel.put(trans=crt.Translate(x=hspan*i, y=vspan*j), child=M)
+    
+    #====== Polylineのテスト ==============================
+    PL = bd.DrawPolyLines(line_width=0.5,
+                          rgb=crt.MYCOL['blue'], 
+                          linecap='round', 
+                          linejoin='round', 
+                          )
+    DrawingPanel.put(trans=crt.Translate(x=0, y=0), child=PL)
+    if opt.verbose:
+        print(f'@debug: line: hnum, vnum { hnum, vnum  }: ')
+    ncol = 0
+    for j in range(vnum):
+        x = hspan*i
+        for i in range(hnum):
+            y = vspan*j
+            if opt.verbose:
+                print(f'@debug: line at { i,j }: ')
+            if i > 0 and j > 0:
+                PL.move_to(hspan*(i-1), vspan*(j-1))
+                col_ = COLS[(ncol % len(COLS))]
+                PL.line_to(hspan*i, vspan*j, has_arrow=True)
+                ncol += 1
+    
+    #====== Polylineのテスト ==============================
+
+    #============
+    #印刷
+    #============
+    CV.show(noshow=opt.noshow)
+
+    #debug
+    if opt.verbose: 
+        print(f'\n===== { "printing the object tree..." } ======')
+        bd.dump_board(CV)
+
+        
+    if False and opt.verbose: 
+        print(f'===========')
+        print(f'@Applying the local transformation associated to each leaf node to a point p=(0,0)...')
+        ancestor=CV
+        if LEAF_LIST and len(LEAF_LIST) > 0:
+            for idx, leaf in enumerate(LEAF_LIST):
+                p0=(0.0, 0.0)
+                # p0=(0.0, 0.0, 1.0, 1.0)
+                p1 = ancestor.relative_transform(p=p0, target=leaf,
+                                           verbose=False)
+                # p0 = ancestor.relative_transform_by_apath(p=(0.0, 0.0), apath=apath)
+                print(f'LEAF{idx}\tp0={ p0 } at { ancestor.bname(depth=True) } => p1={ p1 } at {leaf.bname(depth=True)}')
+                apath = leaf.relative_apath_get(top=ancestor)
+                tpath = ancestor.relative_apath_to_tpath(apath=apath, verbose=False)
+                apath1 = [ (obj.bname(), ord) for obj, ord in apath ]
+                print(f'\tapath={ apath1 }')
+                print(f'\t=> tpath={ [ trans.__str__() for trans in tpath ] }')
+            print(f'Note that the obtained transformation result is tentative, and wrong, and just for development purpose. This must be reversed. ')
+    
+    pass 
+
+##EOF
+
+

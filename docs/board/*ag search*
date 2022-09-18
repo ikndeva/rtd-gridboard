@@ -1,0 +1,15 @@
+-*- mode: ag; default-directory: "~/mylocal/gridboard/board/" -*-
+Ag started at Sun Aug 21 07:45:01
+
+ag --literal --group --line-number --column --color --color-match 30\;43 --color-path 1\;32 --smart-case --stats -- warning\:\ empty\ trans .
+File: cboard.py
+125:19:        print(f'@@warning: empty trans: do nothing!')
+144:17:        print(f'warning: empty trans: do nothing!')
+573:21:            print(f'warning: empty trans')
+3 matches
+1 files contained matches
+37 files searched
+330726 bytes searched
+0.002193 seconds
+
+Ag finished at Sun Aug 21 07:45:01
