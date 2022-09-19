@@ -104,7 +104,7 @@ def elemtype_normalize(elemtype=None):
 def is_sequence_type(L, elemtype=None, length=None, verbose=False):
     """オブジェクトLが，指定された型と長さをもつ系列オブジェクトかを真偽で返す．
     さらに系列型であり，elemtypeがNoneでないときに，系列の全ての要素が型elemtypeをもつならば`True`，そうでなければ`False`を返す．
-    
+
     Args: 
          L (object) : オブジェクト
 
@@ -114,7 +114,7 @@ def is_sequence_type(L, elemtype=None, length=None, verbose=False):
 
          verbose (bool) : ログ出力のスイッチ
 
-    Returns : 
+    Returns: 
          (bool) : オブジェクトLが，elemtypeの型指定を満たす系列型ならば`True`を, そうでなければ`False`を返す．
 
     Example:: 
@@ -189,11 +189,14 @@ def _normalize_elemtype(elemtype=None):
           
 def is_typeof(obj, elemtype=None):
      """オブジェクトobjが空でなく，型elemtypeをもつとき，`True`を返し，それ以外のとき`False`を返す．
-     Args : 
-       obj (object) : オブジェクト
-       elemtype (Type) : 型のリスト`(ty1, ..., tyN)`．
-     Returns : 
-       (bool) : オブジェクトobjが，elemtypeの型指定を満たすならば`True`を, そうでなければ`False`を返す．
+
+     Args: 
+          obj (object) : オブジェクト
+
+          elemtype (Type) : 型のリスト`(ty1, ..., tyN)`．
+
+     Returns: 
+          (bool) : オブジェクトobjが，elemtypeの型指定を満たすならば`True`を, そうでなければ`False`を返す．
      """
      ## 引数テスト: 型リストに正規化する．単一型tは，単一元リスト(t)とする．
      elemtypes_ = _normalize_elemtype(elemtype=elemtype)
