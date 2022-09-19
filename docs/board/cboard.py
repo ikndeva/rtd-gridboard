@@ -801,13 +801,20 @@ class WrapperBoard(BoardBase):
     Attributes: 
         verbose (bool): ログ出力のフラグ
     """
-    def __init__(self, child=None, **kwargs):
+    # def __init__(self, child=None, **kwargs):
+    def __init__(self, child=None,
+                 margin=None,
+                 **kwargs):
         """画盤オブジェクトを初期化する
         """
         #引数
         #親Loggableの初期化
         super().__init__(max_children=1, #Can have at most one child
                          **kwargs)
+
+        ##マージン
+        self.margin = margin
+        
         ## 包み込む唯一の子を設定する
         com.ensure(child != None, f'child must be to None!')
         child.parent = None ##使用済みの子から親への参照を切る．破壊的代入．        
@@ -820,6 +827,87 @@ class WrapperBoard(BoardBase):
             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
         return
 
+    def get_the_child(self):
+        _child = self.the_child
+        com.ensure(isinstance(_child, BoardBase),
+                   'child must be a subclass of BoardBase!: {_child}')
+        return _child 
+
+    # Override exp 基本：配置の計算
+    def _arrange_self_box(self):
+        """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
+        次の属性を操作する: 
+
+        * self.boxes  : 読み出し
+        * self.box    : 書き込み
+        * self.trans  : 書き込み
+
+        crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
+        """
+        child_box = self.get_the_child().get_box()
+        x0, y0, x1, y1 = child_box
+
+        #変換
+        mx, my = numpair_normalize(margin=self.margin)
+        self_box = x0 - mx, y0 - my, x1 + mx, y1 + my
+        xx0, yy0, xx1, yy1 = self_box
+        org = 0.0, 0.0
+        src = xx0, yy0
+        dest = crt.vt_sub(org, src)
+        # dest = (-1)*xx0, (-1)*yy0)
+			
+		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
+        # self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
+        # self.box = crt.box_apply_trans(child_box, trans=self.trans)
+        self.trans = crt.Translate(dest=dest)
+        self.box = crt.box_apply_trans(self_box, trans=self.trans)
+        return self.box 
+    
+    # # Override exp 基本：配置の計算
+    # def _arrange_self_box(self):
+    #     """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
+    #     次の属性を操作する: 
+
+    #     * self.boxes  : 読み出し
+    #     * self.box    : 書き込み
+    #     * self.trans  : 書き込み
+
+    #     crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
+    #     """
+    #      child_box = self.get_the_child().get_box()
+    #     x0, y0, x1, y1 = child_box
+			
+	# 	#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
+    #     self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
+    #     self.box = crt.box_apply_trans(child_box, trans=self.trans)
+    #     return self.box 
+    
+    # # Override exp 基本：配置の計算
+    # def _arrange_self_box(self):
+    #     """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
+    #     次の属性を操作する: 
+
+    #     * self.boxes  : 読み出し
+    #     * self.box    : 書き込み
+    #     * self.trans  : 書き込み
+
+    #     crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
+    #     """
+    #     for idx, pair in self.children_enumerated():
+    #         trans, child = pair #分解
+    #         #子の型チェック
+    #         com.ensure(isinstance(child, BoardBase),
+    #                    'child must be a subclass of BoardBase!: {child}')
+    #         #子の再帰処理
+    #         # child_box = child._arrange()
+    #         child_box = child.get_box()
+    #         x0, y0, x1, y1 = child_box
+			
+	# 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
+    #         self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
+    #         self.box = crt.box_apply_trans(child_box, trans=self.trans)
+    #     return self.box 
+    
     # # Override exp 基本：配置の計算
     # def _arrange(self):
     #     """配置を計算する．配置は，ボトムアップに再帰的に計算される．
@@ -920,7 +1008,7 @@ class PackerBoard(Board):
     def __init__(self,
                  align='x',
                  packing=None,
-                 margin_cell=None, #exp
+                 cell_margin=None, #exp
                  ##
                  width=None,
                  height=None, 
@@ -931,7 +1019,7 @@ class PackerBoard(Board):
         #内部変数
         ## マージン設定
         self.packing = packing 
-        self.margin_cell  = margin_cell
+        self.cell_margin  = cell_margin
         
         #内部変数
         self.align = align
@@ -969,7 +1057,7 @@ class PackerBoard(Board):
         print(f'@debug: self={self.myinfo(depth=True)} child={child.myinfo(depth=True)}')
         #exp: ラッパーで包んでから，子リストに加える
         child1 = WrapperBoard(child=child,
-                              margin=self.margin_cell, 
+                              margin=self.cell_margin, 
                               **PackerBoard._debug_wrapper, #デバッグ表示用
                               ) 
         # child1 = WrapperBoard(child=child,

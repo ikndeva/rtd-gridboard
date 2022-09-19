@@ -1359,5 +1359,70 @@ def get_point_by_anchor_ratio(box, ratio=None, verbose=False):
               f'=> anchor_coordinates={x,y}')
     return x, y
 
+#===========
+# vector 
+#===========
+def vt_add(vec0, vec1):
+    """二つのベクトルvec0, vec1の成分和のベクトル`vec0 + vec1`を返す．
+    
+    Args: 
+         vec0 (tuple(num,num)) : vec0 = (x0, y0)
+
+         vec1 (tuple(num,num)) : vec1 = (x1, y1)
+
+    Returns: 
+         (tuple(num,num)) : vec = (x0+x1, y0+y1)
+    """
+    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
+    return vec0[0]+vec1[0], vec0[1]+vec1[1]
+
+def vt_sub(vec0, vec1):
+    """二つのベクトルvec0, vec1の成分差のベクトル`vec0 - vec1`を返す．
+    
+    Args: 
+         vec0 (tuple(num,num)) : vec0 = (x0, y0)
+
+         vec1 (tuple(num,num)) : vec1 = (x1, y1)
+
+    Returns: 
+         (tuple(num,num)) : vec = (x0-x1, y0-y1)
+    """
+    return vt_add(vec0, vt_scale(vec1, scale=(-1.0)))
+
+def vt_mult(vec0, vec1):
+    """二つのベクトルvec0, vec1の成分ごと積のベクトル`vec0 * vec1`を返す．
+    
+    Args: 
+         vec0 (tuple(num,num)) : vec0 = (x0, y0)
+
+         vec1 (tuple(num,num)) : vec1 = (x1, y1)
+
+    Returns: 
+         (tuple(num,num)) : vec = (x0*x1, y0*y1)
+    """
+    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
+    return vec0[0]*vec1[0], vec0[1]*vec1[1]
+
+def vt_scale(vec0, scale=None):
+    """ベクトルvec0とスカラーscaleの積のベクトル`scale * vec0`を返す．
+    
+    Args: 
+         vec0 (tuple(num,num)) : ベクトル vec0 = (x0, y0)
+
+         scale (num) : スカラー
+
+    Returns: 
+         (tuple(num,num)) : vec = (scale*x0, scale*y0)
+    """
+    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    if scale==None:
+        return vec0
+    else:
+        com.ensure(isinstance(scale, (float,int)),
+                   f'scale={scale} must be a number!')
+        return vec0[0]*scale, vec0[1]*scale 
+
 
 ##EOF

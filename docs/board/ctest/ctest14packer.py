@@ -6,6 +6,7 @@ import sys
 from argparse import ArgumentParser
 import cairo 
 import math 
+import random
 
 import common as com 
 ##
@@ -137,8 +138,8 @@ if __name__ == '__main__':
     VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
                               child=bd.PackerBoard(align=align_outer,
                                                    pack=False,
-                                                   # margin=0, 
-                                                   margin=hspan/4, 
+                                                   # cell_margin=0, 
+                                                   # cell_margin=hspan/4, 
                                                    ))
     
     oid = 0
@@ -146,25 +147,27 @@ if __name__ == '__main__':
         Row = VStack.add(child=bd.PackerBoard(align=align_inner,
                                               pack=opt.pack, 
                                               # pack_anchor='mid', 
-                                              # margin=0, 
-                                              # margin=hspan/4, 
+                                              # cell_margin=0, 
+                                              # cell_margin=hspan/4, 
+                                              cell_margin=hspan/2, 
                                               ))
         for j in range(hnum): #列
+            C = random.random() #[0,1]の乱数
             rgb = COLS[oid % vnum ]
             #セルの可変幅
             if False and i % 2 == 0: ow_var, oh_var = ow, oh
             else:          ow_var, oh_var = ow/2, oh/2
             
             #セルの図形
-            if False and i % 2 == 0:
-                D = Row.add(bd.DrawRectangle(width=ow_var, height=oh_var,
+            if oid % 2 == 0:
+                D = Row.add(bd.DrawRectangle(width=ow_var*C, height=oh_var*C,
                                              source_rgb=rgb,
                                              tags=f'Box_{i}_{j}',
                                              show_origin=True, 
                                              )
                             )
             else:
-                D = Row.add(bd.DrawCircle(r = ow_var, 
+                D = Row.add(bd.DrawCircle(r = ow_var*C, 
                                           # r = 0.5*ow_var, 
                                           source_rgb=rgb,
                                           tags=f'Circle_{i}_{j}',

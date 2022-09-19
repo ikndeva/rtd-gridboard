@@ -80,8 +80,8 @@ if __name__ == '__main__':
                    imagesize='VGA',
                    portrait=False,
                    boundingbox=opt.boundingbox,
-                   # max_perturb=bd.DEFAULT_LINE_WIDTH*4.0,
-                   max_perturb=bd.DEFAULT_LINE_WIDTH*8.0, 
+                   max_perturb=bd.DEFAULT_LINE_WIDTH*4.0,
+                   # max_perturb=bd.DEFAULT_LINE_WIDTH*8.0, 
                    verbose=opt.verbose)
     cr = CV.context() #Cairo.Context
 
@@ -138,8 +138,8 @@ if __name__ == '__main__':
     VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
                               child=bd.PackerBoard(align=align_outer,
                                                    pack=False,
-                                                   margin=0, 
-                                                   #margin=hspan/2, 
+                                                   #cell_margin=0, 
+                                                   cell_margin=(hspan/2,hspan/2), 
                                                    ))
     
     oid = 0
