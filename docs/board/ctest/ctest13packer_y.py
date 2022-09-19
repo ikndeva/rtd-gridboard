@@ -128,7 +128,7 @@ if __name__ == '__main__':
     if not opt.anchor_x: opt.anchor_x = 'left'
     if not opt.anchor_y: opt.anchor_y = 'top'
 
-    VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
+    VStack = DrawingPanel.put(trans=crt.Translate(dest=(0,0)),
                               child=bd.PackerBoard(align='y',
                                                    margin=hspan/2, 
                                                    ))
@@ -140,11 +140,6 @@ if __name__ == '__main__':
                                               pack_anchor_x=opt.anchor_x,
                                               pack_anchor_y=opt.anchor_y, 
                                               ))
-        # Row = DrawingPanel.put(trans=crt.Translate(x=hspan*0.0, y=vspan*i),
-        #                        child=bd.PackerBoard(align='x',
-        #                                             margin_x=hspan/4, 
-        #                                             margin_x=hspan/4, 
-        #                                             ))
         for j in range(hnum): #列
             rgb = COLS[oid % vnum ]
             if i % 2 == 0: 
@@ -170,7 +165,7 @@ if __name__ == '__main__':
     #===== 図形のテスト ==============================
 
     # #====== Polylineのテスト ==============================
-    # PL = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
+    # PL = DrawingPanel.put(trans=crt.Translate(dest=(0,0)),
     #                       child=bd.DrawPolyLines(line_width=0.5,
     #                                              rgb=crt.MYCOL['blue'], 
     #                                              )

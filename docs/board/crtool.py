@@ -965,45 +965,6 @@ def cr_draw_marker_cross(x=0.0, y=0.0, angle=math.pi*0.25,
     cr.restore()
     return 
 
-# def cr_draw_marker_cross(x=0.0, y=0.0, angle=None, 
-#                          ticklen=DEFAULT_MARKER_TICKLEN,
-#                          context=None, **kwargs):
-#     linewidth = kw.get(kwargs, key='linewidth', altkeys=['line_width', 'pen_width'], default=2)
-#     kwargs['linewidth'] = linewidth
-#     cr_set_context_parameters(context=context, **kwargs)
-#     if True: print(f'@debug:cr_draw_marker_cross:{x,y,angle}')
-#     # context.save()
-#     # if angle != None:
-#     #     context.rotate(angle) #回転
-#     # if x != 0 or y != 0: 
-#     #     context.translate(x, y)
-#         # cr_apply_trans(trans=Translate(x=x, y=y), context=context)
-#     ##十時型を書く
-#     ticklen=10
-#     context.move_to(0, 0)
-#     context.line_to(ticklen*1.0, ticklen*0.0)
-#     context.move_to(0, 0)
-#     context.line_to(ticklen*(-1.0), ticklen*0.0)
-#     context.move_to(0, 0)
-#     context.line_to(ticklen*0.0, ticklen*1.0)
-#     context.move_to(0, 0)
-#     context.line_to(ticklen*0.0, ticklen*(-1.0))
-#     ##描き終わり
-#     #context.restore()
-#     # ##十時型を書く
-#     # context.move_to(0, 0)
-#     # context.line_to(ticklen*1.0, ticklen*0.0)
-#     # context.move_to(0, 0)
-#     # context.line_to(ticklen*(-1.0), ticklen*0.0)
-#     # context.move_to(0, 0)
-#     # context.line_to(ticklen*0.0, ticklen*1.0)
-#     # context.move_to(0, 0)
-#     # context.line_to(ticklen*0.0, ticklen*(-1.0))
-#     # ##描き終わり
-#     # cr_process_stroke_or_fill(context=context, fill='fill')
-#     context.fill()
-#     return 
-
 def cr_draw_marker(ax, ay, r=None, context=None, **kwargs):
     """関数cr_draw_marker_circleのラッパー関数．下位互換性のため．"""
     return cr_draw_marker_circle(ax, ay, r=r, context=context, **kwargs)
@@ -1151,30 +1112,35 @@ class GeoTransform():
     pass 
 
 class Translate(GeoTransform):
-    """並行移動の変換のクラス．
+    """並行移動の変換のクラス．次の引数 destかsourceのどちらか一つを指定する．
 
     Args: 
-    	  x (float) : x方向の移動量. 
+         dest (tuple(num,num)) : 原点を移す先の点の座標
+
+         source (tuple(num,num)) : 点原点に移す元の点（アンカー）
+
+    	 x (float) : x方向の移動量. obsolute 
     
-    	  y (float) : y方向の移動量. 
+    	 y (float) : y方向の移動量. obsolute 
     
     """
-    def __init__(self, x=0, y=0, destination=None, source=None):
-        if source != None:
-            ## trans that maps source to the origin (0,0)
-            com.ensure(isProperPoint(source), 
-                       f'source={source} must have type (num, num)!')
-            self.x, self.y = 0.0 - source[0], 0.0 - source[1]
-        elif destination != None:
-            ## trans that maps the origin (0,0) to dest 
-            com.ensure(isProperPoint(destination), 
-                       f'destination={destination} must have type (num, num)!')
-            self.x, self.y = destination
-        else:
-            ## trans that maps the origin (0,0) to (x,y)
-            com.ensure(isProperPoint((x, y)),
-                       f'p={ x, y } must be pair of float')
-            self.x, self.y = x, y
+    def __init__(self, dest=None, source=None,
+                 x=None, y=None):
+        #正規化
+        if x!=None and y!=None:
+            dest = (x, y)
+        elif dest == None:            
+            dest = (0.0, 0.0)
+            
+        if source == None:
+            source = (0.0, 0.0)
+
+        ## 点source を点 destへ移す並行移動 trans: (0,0) maps to (x,y) を求める．
+        com.ensure(isProperPoint(source), 
+                   f'source={source} must have type (num, num)!')
+        com.ensure(isProperPoint(dest), 
+                   f'dest={dest} must have type (num, num)!')
+        self.x, self.y = dest[0] - source[0], dest[1] - source[1]
         return
 
     def __str__(self):

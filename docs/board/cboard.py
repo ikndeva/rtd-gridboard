@@ -140,7 +140,7 @@ class BoardBase(log.Loggable):
         
         		root = Canvas()
         		child = root.put(Board())
-        		child = parent.put(trans=Translate(x=1, y=2), 
+        		child = parent.put(trans=Translate(dest=(1,2)), 
         			Rectangle())
         """
         #型チェック: 変換transは，Noneを許す．
@@ -594,8 +594,6 @@ class AnchorBoard(BoardBase):
         # アンカー点を原点に写す変換_transを求める．
         _trans = crt.Translate(source=src) ##新しい変換
         self.trans = _trans
-        # x, y = crt.get_point_by_anchor_ratio(_boxes, ratio=_ratio)
-        # _trans = crt.Translate(0.0 - x, 0.0 - y) ##新しい変換
 
         ##新しい変換で包含矩形を変換する
         _box = crt.box_apply_trans(_boxes, trans=_trans)
@@ -804,7 +802,7 @@ class WrapperBoard(BoardBase):
             x0, y0, x1, y1 = child_box
 			
 			#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-            self.trans = crt.Translate((-1)*x0, (-1)*y0)
+            self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
             self.box = crt.box_apply_trans(child_box, trans=self.trans)
                 
         if self.verbose:
@@ -1038,7 +1036,7 @@ class PackerBoard(Board):
             trans, child = pair #分解
 
             #子配置の変換
-            trans1 = crt.Translate(x=_child_pos[0], y=_child_pos[1])
+            trans1 = crt.Translate(dest=_child_pos)
 
             #子を新たに生成したラッパーで包み，子リストに再登録する
             child1 = WrapperBoard(child=child, **PackerBoard._debug_wrapper) #デバッグ用

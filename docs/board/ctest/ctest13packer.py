@@ -106,7 +106,7 @@ if __name__ == '__main__':
     LEAF_LIST = [] #オブジェクト木の葉の集合
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
-    DrawingPanel = CV.put(trans=crt.Translate(x=dskip, y=dskip),
+    DrawingPanel = CV.put(trans=crt.Translate(dest=(dskip,dskip)),
                           child=bd.Board(tags='DrawingPanel'))
     
     #====== Markerのテスト ==============================

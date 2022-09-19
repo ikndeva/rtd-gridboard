@@ -256,7 +256,7 @@ class Loggable:
          
                root = Canvas()
                child = root.put(Board())
-               child = parent.put(trans=Translate(x=1, y=2), Rectangle())
+               child = parent.put(trans=Translate(dest=(1, 2)), Rectangle())
         """
         #子の型チェック
         com.ensure((pair != None and

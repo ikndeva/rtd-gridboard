@@ -100,7 +100,7 @@ if __name__ == '__main__':
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     DrawingPanel = bd.Board(tags='DrawingPanel')
-    CV.put(trans=crt.Translate(x=dskip, y=dskip), child=DrawingPanel)
+    CV.put(trans=crt.Translate(dest=(dskip,dskip)), child=DrawingPanel)
     
     #====== Markerのテスト ==============================
     # 格子点にマーカーを置く
@@ -114,7 +114,7 @@ if __name__ == '__main__':
                               rgb=crt.cr_add_alpha(crt.MYCOL['blue'], 0.375), fill='fill', 
                               tags=f'Marker_{i}_{j}',
                               boundingbox=False)
-            MarkerBoard.put(trans=crt.Translate(x=hspan*j, y=vspan*i), child=M)
+            MarkerBoard.put(trans=crt.Translate(dest=(hspan*j, vspan*i)), child=M)
     
     #===== 図形のテスト ==============================
     # 格子点に図形をおく
@@ -153,37 +153,13 @@ if __name__ == '__main__':
                                   linewidth=1,
                                   #debug=True, 
                                   )
-            DrawingPanel.put(trans=crt.Translate(x=hspan*j + 0.5*hspan,
-                                                 y=vspan*i + 0.5*vspan),
+            DrawingPanel.put(trans=crt.Translate(dest=(hspan*j + 0.5*hspan,
+                                                       vspan*i + 0.5*vspan)),
                              child=D)
             LEAF_LIST.append(D)
             ## セルオブジェクトC 
             oid += 1
 
-
-    # #====== Polylineのテスト ==============================
-    # PL = bd.DrawPolyLines(line_width=0.5,
-    #                       rgb=crt.MYCOL['blue'], 
-    #                       linecap='round', 
-    #                       linejoin='round', 
-    #                       )
-    # DrawingPanel.put(trans=crt.Translate(x=0, y=0), child=PL)
-    # if opt.verbose:
-    #     print(f'@debug: line: hnum, vnum { hnum, vnum  }: ')
-    # ncol = 0
-    # for j in range(vnum):
-    #     x = hspan*i
-    #     for i in range(hnum):
-    #         y = vspan*j
-    #         if opt.verbose:
-    #             print(f'@debug: line at { i,j }: ')
-    #         if i > 0 and j > 0:
-    #             PL.move_to(hspan*(i-1), vspan*(j-1))
-    #             col_ = COLS[(ncol % len(COLS))]
-    #             PL.line_to(hspan*i, vspan*j, has_arrow=True)
-    #             ncol += 1
-    
-    # #====== Polylineのテスト ==============================
 
     #============
     #印刷
