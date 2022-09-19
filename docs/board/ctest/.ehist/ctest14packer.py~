@@ -11,7 +11,7 @@ import common as com
 ##
 import crtool as crt
 import cboard as bd
-import cimage as cim
+#import cimage as cim
 
 verbose = True
 
@@ -90,8 +90,9 @@ if __name__ == '__main__':
                    max_perturb=bd.DEFAULT_LINE_WIDTH*8.0, 
                    verbose=opt.verbose)
 
-    cim = CV.get_image_board() ##ImageBoardオブジェクト
-    cr = cim.context()
+    cr = CV.context()
+    #cim = CV.get_image_board() ##ImageBoardオブジェクト
+    #cr = cim.context()
 
     #====== テスト ==============================
     
@@ -192,8 +193,10 @@ if __name__ == '__main__':
             rgb = COLS[oid % vnum ]
             #ow_var, oh_var = ow, oh
             # # セルの可変幅
-            if i % 2 == 0: ow_var, oh_var = ow, oh
-            else:          ow_var, oh_var = ow/2, oh/2
+            if i % 2 == 0 and j == 0:
+                ow_var, oh_var = ow, oh
+            else:
+                ow_var, oh_var = ow/2, oh/2
             
             #セルの図形
             if i % 2 == 0:

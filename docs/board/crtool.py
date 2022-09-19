@@ -174,6 +174,7 @@ ALIGN_Y = {
 }
 
 ## 位置合わせ
+ANCHOR_ORIGIN = ('left','top') #左上原点のアンカー指定
 DEFAULT_ANCHOR_X = 'left'
 DEFAULT_ANCHOR_Y = 'top'
 DEFAULT_ALIGN_RATIO_X = 0.0 #not used 
@@ -1288,6 +1289,28 @@ def get_default_anchor(anchor=None):
     else:
         panic(f'get_align: no such anchor={anchor}!')
     return anchor_x, anchor_y
+
+def get_point_by_anchor(box=None, anchor=None, verbose=False):
+    """アンカーキーワードから，矩形box上のアンカー点src in R^2を求める．
+    
+    Args: 
+         box (tuple(num,num)) : 矩形 box = (x0, x1, y0, y1)
+
+         anchor (tuple(str,str)) : x方向とy方向のアンカー指示. 
+
+    Returns: 
+         (tuple(float, float)) : 包含矩形box上のアンカー位置の点 pos = (x, y)
+    """
+    com.ensure(box != None and isProperBox(box),
+               f'box={box} must be a box!')
+    com.ensure(anchor!=None,
+               f'anchor={anchor} is None!')
+    _ratio = get_anchor_ratio(anchor=anchor, verbose=verbose)
+    src = get_point_by_anchor_ratio(box, ratio=_ratio, verbose=verbose)
+    com.ensure(src != None and isProperPoint(src),
+               f'src={src} must be a point!')
+    return src 
+
 
 def get_anchor_ratio(anchor=None, verbose=False):
     """アンカーキーワードの対 anchor = (anchor_x, anchor_y)から，比率対 ratio = (ratio_x, ratio_y) in [0,1]^2を返す．

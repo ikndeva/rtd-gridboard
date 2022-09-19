@@ -558,19 +558,51 @@ class AnchorBoard(BoardBase):
     """
     
     # def __init__(self, anchor_x=None, anchor_y=None, anchor=None, **kwargs):
-    def __init__(self, anchor=None, **kwargs):
+    def __init__(self,
+                 anchor=None,
+                 margin=None, 
+                 **kwargs):
         #引数
         super().__init__(**kwargs)
         
         #アンカーのデフォールト設定
         self.anchor = anchor_normalize(anchor=anchor, default=('left','top'))
 
+        #マージンのデフォールト設定
+        self.margin = None 
+        if margin!=None: 
+            self.margin = numpair_normalize(margin=margin, default=(0,0))
+            com.ensure(crt.isProperPoint(self.margin),
+                   f'self.margin={self.margin} must be a pair of numbers')
+            if True: print(f'@debug2: AnchorBoard.__init__(): margin={margin}, self.margin={self.margin}; vars={self.vars()}')
+
         #内部変数
-        # self.anchor_ratio = None
         
         if self.verbose:
             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
         return
+
+
+    def _box_margined(self, box=None, margin=None):
+        """矩形boxの外周にmargin幅の余白を加えた矩形box0と，内側の矩形boxの原点(left, top)に対応するアンカー点を返す．
+        """
+        if margin==None:
+            box0 = box
+            dest0 = (0,0)
+            return box0, dest0
+        else: 
+            com.ensure(crt.isProperPoint(margin),
+                       f'{self.myinfo()}: margin={margin} must be a pair of numbers: , vars={self.vars()}')
+            if True: print(f'@debug3: _box_margined(): margin={margin}')
+            #親の矩形を求める
+            _shape = crt.box_shape(box)
+            _shape = _shape[0] + 2.0*margin[0], _shape[1] + 2.0*margin[1]
+            box0 = 0.0, 0.0, _shape[0], _shape[1]
+            com.ensure(crt.isProperBox(box0), f'_shape={box0} must be a box!')
+            #親の矩形上の原点から余白分内側のアンカー点destを求める．
+            dest0 = crt.get_point_by_anchor(box0, anchor=crt.ANCHOR_ORIGIN)
+            dest0 = dest0[0] + margin[0], dest0[1] + margin[1]
+            return box0, dest0
 
     #To be Override
     def _arrange_self_box(self):
@@ -580,26 +612,33 @@ class AnchorBoard(BoardBase):
         * self.boxes  : 読み出し
         * self.box    : 書き込み
         * self.trans  : 書き込み
+
+        crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
         """
         _trans, _box = None, None #変数
-        com.ensure(self.boxes != None, f'self.boxes={self.boxes} is None!')
-        _boxes = self.boxes
-        # _trans, _box = None, _boxes
-        
-        # アンカーキーワードから，アンカー点src in R^2を求める．
-        com.ensure(self.anchor!=None, f'self.anchor={self.anchor} is None!')
-        _ratio = crt.get_anchor_ratio(anchor=self.anchor)
-        src = crt.get_point_by_anchor_ratio(_boxes, ratio=_ratio)
 
-        # アンカー点を原点に写す変換_transを求める．
-        _trans = crt.Translate(source=src) ##新しい変換
+        #子の矩形を求める
+        com.ensure(self.boxes != None, f'self.boxes={self.boxes} is None!')
+        _box1 = self.boxes #子（たち）の包含矩形
+        #子の矩形上のアンカー点_srcを求める．
+        _src = crt.get_point_by_anchor(_box1, anchor=crt.ANCHOR_ORIGIN)
+
+        #親の矩形を求める
+        ## 内側の矩形_box1の外周に幅self.marginの余白をとった外側の矩形_boxと，対応する内側の矩形の原点 _dest = (left, top)を返す．
+        if True: print(f'@debug4:{self.myinfo()}: AnchorBoard._arrange_self_box(): self.margin={self.margin}, vars={self.vars()}')
+        
+        _box, _dest = self._box_margined(box= _box1, margin=self.margin)
+
+        # _box, _dest = AnchorBoard._box_margined(box= _box1, margin=self.margin)
+
+        # 子のアンカー点_srcを目的地_destに写す変換_transを求める．
+        _trans = crt.Translate(source=_src, dest=_dest) ##新しい変換
         self.trans = _trans
 
         ##新しい変換で包含矩形を変換する
-        _box = crt.box_apply_trans(_boxes, trans=_trans)
         self.box = _box
         
-        if True: print(f'@debug:arrange_self_transform:{self.myinfo()}: ratio={ _ratio } => src={src} trans={self.trans}: box0={_boxes} => box={_box}')
+        if True: print(f'@debug:arrange_self_transform:{self.myinfo()}: anchor={self.anchor} => src={_src} trans={self.trans}: box0={_box1} => box={_box}')
         return 
 
     pass ##class AnchorBoard
@@ -751,6 +790,7 @@ class Canvas(Board):
 # ラッパーのクラス
 #=====
 class WrapperBoard(BoardBase):
+#class WrapperBoard(AnchorBoard):
     """ラッパーのクラス．唯一の子をもち，指定された以外のメソッド呼び出しを子に転送する．
 
     Args: 
@@ -780,34 +820,34 @@ class WrapperBoard(BoardBase):
             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
         return
 
-    # Override exp 基本：配置の計算
-    def _arrange(self):
-        """配置を計算する．配置は，ボトムアップに再帰的に計算される．
+    # # Override exp 基本：配置の計算
+    # def _arrange(self):
+    #     """配置を計算する．配置は，ボトムアップに再帰的に計算される．
 
-        Args: 
+    #     Args: 
 
-        Returns: 
-        	rect: 計算済みの自身の包含矩形オブジェクト
-        """
-        if self.verbose:
-            self.repo(msg=f'{self.myinfo()}._arrange(): { self.vars() }')
+    #     Returns: 
+    #     	rect: 計算済みの自身の包含矩形オブジェクト
+    #     """
+    #     if self.verbose:
+    #         self.repo(msg=f'{self.myinfo()}._arrange(): { self.vars() }')
 
-        for idx, pair in self.children_enumerated():
-            trans, child = pair #分解
-            #子の型チェック
-            com.ensure(isinstance(child, BoardBase),
-                       'child must be a subclass of BoardBase!: {child}')
-            #子の再帰処理
-            child_box = child._arrange()
-            x0, y0, x1, y1 = child_box
+    #     for idx, pair in self.children_enumerated():
+    #         trans, child = pair #分解
+    #         #子の型チェック
+    #         com.ensure(isinstance(child, BoardBase),
+    #                    'child must be a subclass of BoardBase!: {child}')
+    #         #子の再帰処理
+    #         child_box = child._arrange()
+    #         x0, y0, x1, y1 = child_box
 			
-			#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-            self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
-            self.box = crt.box_apply_trans(child_box, trans=self.trans)
+	# 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
+    #         self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
+    #         self.box = crt.box_apply_trans(child_box, trans=self.trans)
                 
-        if self.verbose:
-            self.repo(msg=f'{self.myinfo()}._arrange()=> box={ boxes }', isChild=True)
-        return self.box 
+    #     if self.verbose:
+    #         self.repo(msg=f'{self.myinfo()}._arrange()=> box={ boxes }', isChild=True)
+    #     return self.box 
 
     #=====
     ## メソッド転送
@@ -834,15 +874,17 @@ def numpair_normalize(margin=None, default=None):
     margin==Noneのときは，(0.0,0.0)を返す．
     """
     if margin==None:
-        margin = com.ensure_defined(value=default,
+        margin1 = com.ensure_defined(value=default,
                                     default=(0.0, 0.0))
     elif isinstance(margin, (float,int)): 
-        margin = (margin, margin)
+        margin1 = (margin, margin)
     elif com.is_sequence_type(margin, elemtype=(float,int), length=2):
-        pass
+        margin1 = margin
     else:
         com.panic(f'margin={margin} must be either num or (num,num)!')
-    return margin
+    com.ensure(crt.isProperPoint(margin1),
+               f'margin={margin1} must be a pair of numbers')
+    return margin1 
     
 def anchor_normalize(anchor=None, default=None):
     """アンカー指定を正規化する．anchor がstrの対(str,str)ならばそのまま返し，
@@ -877,12 +919,9 @@ class PackerBoard(Board):
     """
     def __init__(self,
                  align='x',
-                 # pack=False,
-                 margin=None,
-                 packing=None, 
+                 packing=None,
+                 margin_cell=None, #exp
                  ##
-                 # pack_anchor=None,
-                 # expand=False,
                  width=None,
                  height=None, 
                  **kwargs):
@@ -891,8 +930,8 @@ class PackerBoard(Board):
         
         #内部変数
         ## マージン設定
-        self.mshape = numpair_normalize(margin) #margin-shape
         self.packing = packing 
+        self.margin_cell  = margin_cell
         
         #内部変数
         self.align = align
@@ -923,11 +962,21 @@ class PackerBoard(Board):
         		child = parent.add(Rectangle())
         		child = parent.add(Circle())
         """
+        # com.ensure(child != None, f'child must be to None!')
+        # print(f'@debug: self={self.myinfo(depth=True)} child={child.myinfo(depth=True)}')
+        # return self.put(trans=None, child=child) #exp
         com.ensure(child != None, f'child must be to None!')
         print(f'@debug: self={self.myinfo(depth=True)} child={child.myinfo(depth=True)}')
-        return self.put(trans=None, child=child) #exp
-        # wrapper = WrapperBoard(child=child)
-        # return self.put(trans=None, child=wrapper)
+        #exp: ラッパーで包んでから，子リストに加える
+        child1 = WrapperBoard(child=child,
+                              margin=self.margin_cell, 
+                              **PackerBoard._debug_wrapper, #デバッグ表示用
+                              ) 
+        # child1 = WrapperBoard(child=child,
+        #                       **PackerBoard._debug_wrapper, #デバッグ表示用
+        #                       ) 
+        return self.put(trans=None, child=child1) #exp
+        
 
     # 基本：子画盤の並びを返す
     ##Override
@@ -1038,15 +1087,20 @@ class PackerBoard(Board):
             #子配置の変換
             trans1 = crt.Translate(dest=_child_pos)
 
-            #子を新たに生成したラッパーで包み，子リストに再登録する
-            child1 = WrapperBoard(child=child, **PackerBoard._debug_wrapper) #デバッグ用
-            self.set_child_by_idx(idx=idx, pair=(trans1, child1)) #子を追加
+            #変換と子を追加
+            self.set_child_by_idx(idx=idx, pair=(trans1, child)) 
 
+            ##=========================
+            #子を新たに生成したラッパーで包み，子リストに再登録する
+            # child1 = WrapperBoard(child=child, **PackerBoard._debug_wrapper) #デバッグ用
+            # self.set_child_by_idx(idx=idx, pair=(trans1, child1)) #子を追加
+            ##=========================
+            
             #子の配置情報の計算
-            child1._arrange() #再帰的に処理
+            child._arrange() #再帰的に処理
 
             #自身の包含矩形の計算
-            box0 = child1.get_box()
+            box0 = child.get_box()
             com.ensure(box0 != None, f'box0={box0} is None!')
             box1 = crt.box_apply_trans(box0, trans=trans1)
             com.ensure(box1 != None, f'box1={box1} is None!')
