@@ -80,7 +80,8 @@ if __name__ == '__main__':
                    imagesize='VGA',
                    portrait=False,
                    boundingbox=opt.boundingbox,
-                   max_perturb=bd.DEFAULT_LINE_WIDTH*4.0,                   
+                   # max_perturb=bd.DEFAULT_LINE_WIDTH*4.0,
+                   max_perturb=bd.DEFAULT_LINE_WIDTH*8.0, 
                    verbose=opt.verbose)
     cr = CV.context() #Cairo.Context
 
@@ -151,11 +152,11 @@ if __name__ == '__main__':
         for j in range(hnum): #列
             rgb = COLS[oid % vnum ]
             #セルの可変幅
-            if i % 2 == 0: ow_var, oh_var = ow, oh
+            if False and i % 2 == 0: ow_var, oh_var = ow, oh
             else:          ow_var, oh_var = ow/2, oh/2
             
             #セルの図形
-            if i % 2 == 0:
+            if False and i % 2 == 0:
                 D = Row.add(bd.DrawRectangle(width=ow_var, height=oh_var,
                                              source_rgb=rgb,
                                              tags=f'Box_{i}_{j}',

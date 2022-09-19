@@ -239,13 +239,15 @@ class Loggable:
     #=====
 
     # exp 基本：子を追加する
-    def put(self, child=None, trans=None): 
-        """子を追加する．
+    def append(self, pair=None): 
+        """子ボードの対 pair (trans, child)を受け取り，子配列に追加する．
+
+        * trans (cairo.Matrix) : 自座標における子の配置を指示する変換オブジェクト
+        
+        * child (Board): 子として追加するBoardオブジェクト
         
         Args: 
-             trans (cairo.Matrix) : 自座標における子の配置を指示する変換行列．原点にある子を所望の場所に配置するためのアフィン変換を表す．
-        
-             child (Board): 子として追加するBoardオブジェクト
+             pair (tuple) : 変換と子ボードの対 (trans, child)
 
         Returns:
              (Board) : 追加した子
@@ -256,9 +258,12 @@ class Loggable:
                child = root.put(Board())
                child = parent.put(trans=Translate(x=1, y=2), Rectangle())
         """
-        def _vars_put_(board=None):
-            return kw.extract(kwargs=vars(board),
-                              keys=['cmd','depth','verbose'])
+        #子の型チェック
+        com.ensure((pair != None and
+                    com.is_sequence_type(pair, elemtype=None, length=2)),
+                   ##elemtype=Noneは任意の型を許し，長さ=2のみテストする
+                   f'{self.myinfo()}.put(): pair={pair} must be a pair of trans and child board!')
+        trans, child = pair 
         #子の型チェック
         com.ensure(child != None and isinstance(child, Loggable),
                    f'{self.myinfo()}.put(): child must be a Loggable!: {child}') 
@@ -270,12 +275,58 @@ class Loggable:
             com.panic(f'cannot add more than max_children_={self.max_children_}!')
         else:
             child.ord_ = len(self.children_)      #子ID
-            self.children_.append((trans, child)) #子リスト
+            self.children_.append(pair) #子リスト
             
         #ログ
         if self.verbose: self.repo(msg=f'=> added: {self.myinfo()}.put(): trans={trans} child={ child } with vars={ child.vars() }...')
+        return #Do not change!
+
+    # exp 基本：子を追加する
+    def set_child_by_idx(self, idx=None, pair=None): 
+        """添字 idx と変換と子ボードの対 pair (trans, child)を受け取り，
+        子配列のidxセルにpairを代入する．
+        添字は，下記の例のように元の配列から取り出したものに限る．
+
+        * trans (cairo.Matrix) : 自座標における子の配置を指示する変換オブジェクト
         
-        return child #Do not change!
+        * child (Board): 子として追加するBoardオブジェクト
+        
+        Args: 
+             idx (int) : 子配列の添字
+
+             pair (tuple) : 変換と子ボードの対 (trans, child)
+
+        Example:: 
+         
+             for idx, value in parent: 
+                 trans, child = value
+                 trans1, child1 = modifing(trans, child)
+                 parent.set(idx, trans=trans1, child1) 
+        """
+        #子の型チェック
+        com.ensure((pair != None and
+                    com.is_sequence_type(pair, elemtype=None, length=2)),
+                   ##elemtype=Noneは任意の型を許し，長さ=2のみテストする
+                   f'{self.myinfo()}.put(): pair={pair} must be a pair of trans and child board!')
+        trans, child = pair 
+        # com.ensure(trans != None and isinstance(trans, GeoTransform),
+        #            f'{self.myinfo()}.put(): trans must be a GeoTransform!: {trans}') 
+        com.ensure(child != None and isinstance(child, Loggable),
+                   f'{self.myinfo()}.put(): child must be a Loggable!: {child}') 
+        # 親子関係の管理
+        child.parent = None  #親への参照を来る
+        self.register_child(child)
+        
+        # 子を追加する
+        com.ensure(idx < len(self.children_), 
+                   f'{self.myinfo()}.set(): index={idx} >= num of children={len(self.children_)}!')
+        
+        child.ord_ = idx    #子ID
+        self.children_[idx] = (trans, child) #子リスト. 上書きなので注意!
+            
+        #ログ
+        if self.verbose: self.repo(msg=f'overwrite =>{self.myinfo()}.set(): idx={idx} trans={trans} child={ child } with vars={ child.vars() }...')
+        return child 
 
      # # exp 基本：子を追加する
      # def put_holder(self, holder=None): 
@@ -366,7 +417,7 @@ class Loggable:
             self.tags = []
         if isinstance(tags, str):
             self.tags.append(tags)
-        elif is_sequence_type(tags, elemtype=str):
+        elif com.is_sequence_type(tags, elemtype=str):
             for a_tag in tags:
                 if not (a_tag in self.tags): 
                     self.tags.append(a_tag)

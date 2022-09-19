@@ -31,13 +31,13 @@ Attributes:
     * 'round': cairo.LINE_JOIN_ROUND
     * 'bevel': cairo.LINE_JOIN_BEVEL
 
-  ALIGN_X (dict(str, float)) : 
+  ANCHOR_X (dict(str, float)) : 
     位置合わせ用のx方向のアンカー値を表す定数の辞書．範囲`[0,1]`の値をとり，辺上の正規化された位置を表す．複数の別名を提供している．
 
     * 'left'   : 0.0, 'center'  : 0.5, 'right'  : 1.0, #標準名
     * 'beg' : 0.0, 'mid' : 0.5, 'end' : 1.0, #xとy方向の共通名
 
-  ALIGN_Y  (dict(str, float)) : 
+  ANCHOR_Y  (dict(str, float)) : 
     位置合わせ用のy方向のアンカー値を表す定数の辞書．範囲`[0,1]`の値をとり，辺上の正規化された位置を表す．複数の別名を提供している．
 
     * 'top'    : 0.0, 'middle' : 0.5, 'bottom' : 1.0, #標準名
@@ -69,6 +69,19 @@ import common as com
 import kwargs as kw
 
 verbose = True
+
+## 定数：画像サイズ
+DISPLAY_SHAPE = {
+    'QVGA': (320, 240),
+    'VGA' : (640, 480), 
+    'SVGA': (800, 600), 
+    'XGA' : (1024, 768), #default size
+    'WXGA': (1280, 800), 
+    'UXGA': (1600, 1200), 
+    'QXGA': (2048, 1536),
+}
+DEFAULT_DISPLAY_SHAPE=(640, 480)
+DEFAULT_IMAGE_SIZE='XGA' #obsolute 
 
 #Cairo定数
 DEFAULT_IMGTYPE=cairo.FORMAT_ARGB32, #cairoのSurface format
@@ -152,17 +165,30 @@ DARKCOL={
 
 DEFAULT_HEAD_SHAPE = 'sharp'
 
-## 位置合わせ
+## 軸
 ALIGN_X = {
+    'x' : True, 
+}
+ALIGN_Y = {
+    'y' : True, 
+}
+
+## 位置合わせ
+DEFAULT_ANCHOR_X = 'left'
+DEFAULT_ANCHOR_Y = 'top'
+DEFAULT_ALIGN_RATIO_X = 0.0 #not used 
+DEFAULT_ALIGN_RATIO_Y = 0.0 #not used 
+
+ANCHOR_X = {
     'left'   : 0.0, 
-    'center'  : 0.5, 
+    'center' : 0.5, 
     'right'  : 1.0,
     ## uni
     'beg' : 0.0, 
     'mid' : 0.5, 
     'end' : 1.0, 
 }
-ALIGN_Y = {
+ANCHOR_Y = {
     'top'    : 0.0, 
     'middle' : 0.5, 
     'bottom' : 1.0, 
@@ -176,9 +202,37 @@ ALIGN_Y = {
     'above'  : 0.0, 
     'below'  : 1.0, 
 }
-DEFAULT_ALIGN_RATIO_X = 0.0
-DEFAULT_ALIGN_RATIO_Y = 0.0
 
+#==========
+# 便利関数
+#==========
+
+def get_display_shape(shape=None, portrait=None):
+    """入力の画像サイズ指定shapeから， 画像サイズを表す正数の組 shape = (xsize,ysize)を返す．
+
+    Args: 
+        shape (str, (float,float)) : 出力画像サイズを表す文字列sizenameまたは正数の組(xsize, ysize)
+
+        portrait (bool) : 画面向きの指定．Trueならば縦長画面か，Falseならば横長画面．default=False. 
+
+    Returns: 
+         ((float,float)) : 画像サイズを表す正数の組
+    """
+    if shape==None: 
+        _shape = DEFAULT_DISPLAY_SHAPE
+    elif (isinstance(shape, str) and
+        shape in DISPLAY_SHAPE): 
+        _shape = DISPLAY_SHAPE[shape]
+    elif com.is_sequence_type(shape, elemtype=(float,int), length=2):
+        _shape = shape
+    else:
+        com.panic(f'shape={shape} must be either (str) or (number,number)!')
+
+    #長辺の向きの調整: 縦長ならば要素を入れ替える．
+    if portrait: 
+        _shape = (_shape[1], _shape[0]) 
+    return _shape 
+        
 #==========
 #Cairo.context
 #==========
@@ -194,7 +248,7 @@ class ImageBoard:
 
          format (str) : 出力ファイルの描画フォーマット (cairo) in "pdf", "png"
 
-         display_size (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`
+         display_shape (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`
 
          outfile (str) : 出力画像ファイル名の本体を表す文字列．例：`out`
 
@@ -214,9 +268,7 @@ class ImageBoard:
                  imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
                  format="pdf",   #出力ファイルフォーマット（拡張子 pdf, png）
                  outfile="out",  #出力ファイル名（拡張子を除く）
-                 display_size=None, 
-                 # imagesize='XGA',#初期の画像サイズ
-                 # portrait=False, #画像サイズが縦長か？
+                 display_shape=None, 
                  verbose=False):
         """実装レイヤーの画盤を生成するコンストラクタ．
         Args: 
@@ -224,7 +276,7 @@ class ImageBoard:
 
              format (str) : 出力ファイルの描画フォーマット (cairo) in "pdf", "png"
 
-             display_size (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`
+             display_shape (tuple(int, int)) : 画像のサイズ `(xsize, ysize)`
 
              verbose (bool) : 実行情報を表示する
         """
@@ -235,7 +287,7 @@ class ImageBoard:
         self.imgtype = imgtype
         self.format  = format
         self.outfile = outfile
-        self.display_size = display_size
+        self.display_shape = display_shape
         if verbose:
             print(f'ImageBoard.__init__(): { kw.reduce(vars(self)) }')
 
@@ -262,8 +314,8 @@ class ImageBoard:
         self.myoutfile = mybody + "." + OFILE_EXT #ファイル名
 
         ##画像サイズ
-        com.ensure(com.is_sequence_type(self.display_size, elemtype=(int, float)),
-                   f'display_size must be a pair of numbers: {display_size}')
+        com.ensure(com.is_sequence_type(self.display_shape, elemtype=(int, float)),
+                   f'display_shape must be a pair of numbers: {display_shape}')
         
         ## Cairoのサーフェースの生成
         """ class cairo.ImageSurface(format, width, height)
@@ -278,12 +330,12 @@ class ImageBoard:
         """
         if self.format == "png": 
             self.ims = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                          self.display_size[0],
-                                          self.display_size[1]) #image surface
+                                          self.display_shape[0],
+                                          self.display_shape[1]) #image surface
         elif self.format == "pdf": 
             self.ims = cairo.PDFSurface(self.myoutfile,
-                                        self.display_size[0],
-                                        self.display_size[1]) #image surface
+                                        self.display_shape[0],
+                                        self.display_shape[1]) #image surface
         else:
             panic(f'no such a file format={ self.format } is supported!')
 
@@ -1107,12 +1159,22 @@ class Translate(GeoTransform):
     	  y (float) : y方向の移動量. 
     
     """
-    def __init__(self, x=0, y=0):
-        com.ensure(x!=None and y!=None,
-                   f'x={x} and y={y} must be non-None!')
-        com.ensure(isProperPoint((x, y)), f'p={ x, y } must be pair of float')
-        self.x = x
-        self.y = y
+    def __init__(self, x=0, y=0, destination=None, source=None):
+        if source != None:
+            ## trans that maps source to the origin (0,0)
+            com.ensure(isProperPoint(source), 
+                       f'source={source} must have type (num, num)!')
+            self.x, self.y = 0.0 - source[0], 0.0 - source[1]
+        elif destination != None:
+            ## trans that maps the origin (0,0) to dest 
+            com.ensure(isProperPoint(destination), 
+                       f'destination={destination} must have type (num, num)!')
+            self.x, self.y = destination
+        else:
+            ## trans that maps the origin (0,0) to (x,y)
+            com.ensure(isProperPoint((x, y)),
+                       f'p={ x, y } must be pair of float')
+            self.x, self.y = x, y
         return
 
     def __str__(self):
@@ -1242,70 +1304,69 @@ def cr_apply_trans(trans=None, context=None, verbose=False):
 #変換関数
 #=====
 
-def get_anchor_ratio(anchor_x=None, anchor_y=None,
-                     anchor=None, verbose=False):
-    """アンカーキーワード(anchor_x, anchor_y)またはanchorを受け取り
+def get_default_anchor(anchor=None):
+    com.ensure(anchor != None, f'anchor==None!')
+    anchor_x, anchor_y = 0.0, 0.0 
+    if isinstance(anchor, str):
+        if anchor in ANCHOR_X: anchor_x = anchor
+        if anchor in ANCHOR_Y: anchor_y = anchor
+    elif com.is_sequence_type(anchor, str): 
+        if len(anchor) == 1:
+            if anchor in ANCHOR_X: anchor_x = anchor
+            if anchor in ANCHOR_Y: anchor_y = anchor
+        elif len(anchor) == 2:
+            if anchor[0] in ANCHOR_X: anchor_x = anchor[0]
+            if anchor[1] in ANCHOR_Y: anchor_y = anchor[1]
+        else:
+            panic(f'get_align: anchor={anchor} must have length<=2!')
+    else:
+        panic(f'get_align: no such anchor={anchor}!')
+    return anchor_x, anchor_y
+
+def get_anchor_ratio(anchor=None, verbose=False):
+    """アンカーキーワードの対 anchor = (anchor_x, anchor_y)から，比率対 ratio = (ratio_x, ratio_y) in [0,1]^2を返す．
 
     Args: 
-         anchor_x (str) : 横方向の位置指示 in (left, center, right)
-
-         anchor_y (str) : 縦方向の位置指示 in (top, middle, bottom, above, below)
-
-         anchor (str) : 代替の位置指示．単一キーワードまたはキーワードの対(anchor_x, anchor_y)．単一キーワードのときは，値に応じて横または縦の位置表示として用いる．
+         anchor (tuple(str,str)) : x方向とy方向のアンカー指示. 
 
     Returns: 
          (tuple(float, float)) : 矩形[0,1]x[0,1]における正規化されたアンカー位置(anchor_x, anchor_y) in [0,1]x[0,1]
     """
-    ## アンカーキーの正規化
+    com.ensure(com.is_sequence_type(anchor, elemtype=(str),
+                                length=2), 
+               f'anchor={anchor} must be a pair of numbers!')
     ratio_x, ratio_y = None, None
-    if anchor_x==None and anchor_y==None and anchor != None:
-        if isinstance(anchor, str):
-            if anchor in ALIGN_X: anchor_x = anchor
-            if anchor in ALIGN_Y: anchor_y = anchor
-        elif com.is_sequence_type(anchor, str): 
-            if len(anchor) == 1:
-                if anchor in ALIGN_X: anchor_x = anchor
-                if anchor in ALIGN_Y: anchor_y = anchor
-            elif len(anchor) == 2:
-                if anchor[0] in ALIGN_X: anchor_x = anchor[0]
-                if anchor[1] in ALIGN_Y: anchor_y = anchor[1]
-            else:
-                panic(f'get_align: a wrong anchor={anchor}!')
     
     ## アンカーキーからアンカー比率へ変換
-    if anchor_x != None and anchor_x in ALIGN_X:
-        ratio_x = ALIGN_X[anchor_x]
-    else:
-        ratio_x = DEFAULT_ALIGN_RATIO_X
-    if anchor_y != None and anchor_y in ALIGN_Y:
-        ratio_y = ALIGN_Y[anchor_y]
-    else:
-        ratio_y = DEFAULT_ALIGN_RATIO_Y
+    if anchor[0] in ANCHOR_X:
+        ratio_x = ANCHOR_X[anchor[0]]
+    if anchor[1] in ANCHOR_Y:
+        ratio_y = ANCHOR_Y[anchor[1]]
     return ratio_x, ratio_y
 
-def get_point_by_anchor_ratio(box, ratio_x, ratio_y, verbose=False):
+def get_point_by_anchor_ratio(box, ratio=None, verbose=False):
     """矩形とアンカー表示を受け取り，矩形上のアンカー点の座標を返す．
 
     Args: 
-         ratio_x (float) : 正規化されたx方向の位置 in [0,1]
-
-         ratio_y (float) : 正規化されたy方向の位置 in [0,1]
+         ratio (tuple(float, float)) : 正規化アンカー位置 in [0,1]x[0,1]
 
     Returns: 
          (tuple(float, float)) : 包含矩形box上のアンカー位置の点 (x, y)
     """
     #boxの準備
-    com.ensure(box != None and isBoxOrPoint(box),
-               f'get_anchor_by_ratio: box must be a box or a point!')
+    com.ensure(box != None and isProperBox(box),
+               f'get_point_by_anchor_ratio: box={box} must be a box!')
+    com.ensure(ratio != None and isProperPoint(ratio),
+               f'get_point_by_anchor_ratio: ratio={ratio} must be a pair of numbers')
     x0, y0, x1, y1 = box_normalize(box) 
     # compute x-anchor 
     if x1 - x0 == 0: x = x0
-    else: x = x0 * (1.0 - ratio_x) + x1 * (ratio_x)            
+    else: x = x0 * (1.0 - ratio[0]) + x1 * (ratio[0])            
     # compute y-anchor 
     if y1 - y0 == 0: y = y0
-    else: y = y0 * (1.0 - ratio_y) + y1 * (ratio_y)
+    else: y = y0 * (1.0 - ratio[1]) + y1 * (ratio[1])
     if verbose:
-        print(f'@debug: get_anchor_by_ratio: anchor_ratio={ratio_x, ratio_y} '+
+        print(f'@debug: get_anchor_by_ratio: ratio={ratio} '+
               f'=> anchor_coordinates={x,y}')
     return x, y
 

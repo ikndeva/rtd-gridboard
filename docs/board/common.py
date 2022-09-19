@@ -68,19 +68,57 @@ def report_module_path(name):
           log(f' - { d }')
           log(f'@paths end')
 
-def is_sequence_type(L, elemtype=None, verbose=False):
-     """オブジェクトLが系列として扱える型ならば`True`を返し，それ以外のとき`False`を返す．
-     さらに系列型であり，elemtypeがNoneでないときに，系列の全ての要素が型elemtypeをもつならば`True`，そうでなければ`False`を返す．
+def elemtype_normalize(elemtype=None):
+    """与えられた入力オブジェクトelemtypeが，正しい型オブジェクトかを検査し，
+    型リストelemtypes_を返す．もしそうでなければ，エラーを投げて異常終了する．
+    ただし，elemtype==Noneのときは，そのまま返す（任意の型を表す）．
 
-     Args : 
-       L (object) : オブジェクト
-       elemtype (Type) : int, float, strなどのprimitive型，または，union type `(ty1, ..., tyN)`. 
-       verbose (bool) : ログ出力のスイッチ
+    Args: 
+         elemtype (Object) : 基礎型，または，基礎型のリスト（和）
 
-     Returns : 
-       (bool) : オブジェクトLが，elemtypeの型指定を満たす系列型ならば`True`を, そうでなければ`False`を返す．
+    Returns: 
+         (list(型)) : 正規化された型リスト
+    """
+    if elemtype == None:
+        return elemtype
+    
+    elemtypes_ = None ## 作業用：a list for a union type
+    if isinstance(elemtype, type): ## primitive type
+        elemtypes_ = [elemtype]
+    elif isinstance(elemtype, tuple): ##union type
+        elemtypes_ = []
+        for idx, ty in enumerate(elemtype):
+            if isinstance(ty, type):
+                elemtypes_.append(ty)
+            else: 
+                panic(f'common.is_sequence: the {idx}-th element "{ ty }"'+
+                      f' of elemtype must be a type object!')
+        pass 
+    else: 
+        panic(f'common.is_sequence: elemtype="{elemetype}"'+
+              f' must be a type object!')
+    return elemtypes_ 
 
-     Example: 
+
+
+def is_sequence_type(L, elemtype=None, length=None, verbose=False):
+    """オブジェクトLが，指定された型と長さをもつ系列オブジェクトかを真偽で返す．
+    さらに系列型であり，elemtypeがNoneでないときに，系列の全ての要素が型elemtypeをもつならば`True`，そうでなければ`False`を返す．
+    
+    Args: 
+         L (object) : オブジェクト
+
+         elemtype (Type) : int, float, strなどのprimitive型，または，型の選言（union type）を表すリスト `(ty1, ..., tyN)`. 
+
+         length (int) : 系列が満たすべき長さ
+
+         verbose (bool) : ログ出力のスイッチ
+
+    Returns : 
+         (bool) : オブジェクトLが，elemtypeの型指定を満たす系列型ならば`True`を, そうでなければ`False`を返す．
+
+    Example:: 
+
        >>> com.is_sequence_type([1,2,3], elemtype=int)
        True
        >>> com.is_sequence_type([1,2.0,3], elemtype=int)
@@ -91,48 +129,43 @@ def is_sequence_type(L, elemtype=None, verbose=False):
        False
        >>> com.is_sequence_type([1,'b',3], elemtype=(int, str))     
        True 
-     """
-     ## 引数テスト
-     elemtypes_ = None ## 作業用：a list for a union type
-     if elemtype != None: 
-          if isinstance(elemtype, type): ## primitive type
-               elemtypes_ = [elemtype]
-               pass
-          elif isinstance(elemtype, tuple): ##union type
-               elemtypes_ = []
-               for idx, ty in enumerate(elemtype):
-                    if isinstance(ty, type):
-                         elemtypes_.append(ty)
-                    else: 
-                         panic(f'common.is_sequence: the {idx}-th element "{ ty }" of elemtype must be a type object!')
-          else: 
-               panic(f'common.is_sequence: elemtype="{elemetype}" must be a type object!')
+    """
+    ## 型引数のテスト
+    elemtypes_ = elemtype_normalize(elemtype)
      
-     ## 系列型かどうかをテスト
-     isSeq = False
-     if isinstance(L, tuple) or isinstance(L, list):
-          isSeq = True
-     elif hasattr(L, '__iter__'):
-          ## iterableかどうかを判定する標準の書き方
-          isSeq = True
+    ## 系列型かどうかをテスト
+    if isinstance(L, tuple) or isinstance(L, list):
+        isSeq = True
+    elif hasattr(L, '__iter__'):
+        ## iterableかどうかを判定する標準の書き方
+        isSeq = True
+    else:
+        isSeq = False
+
+    ##長さテスト
+    if isSeq and length!=None and len(L) != length:
+        if verbose: print(f'warning: common.is_sequence: it must have length={length} but len={len(L)}!')
+        return False
      
-     if not isSeq: 
-          if verbose: print(f'warning: common.is_sequence: the object L is not of sequence type!: L={L}')
-          return False
-     else: ## isSeq==True
-          ## もしelemtypeが与えられていたら，さらに要素型をテストする
-          if elemtypes_ != None: 
-               for idx, elem in enumerate(L):
-                    res_ = False
-                    for ty in elemtypes_: 
-                         if isinstance(elem, ty):
-                              res_ = True
-                              break
-                    if not res_: 
-                         if verbose: print(f'warning: common.is_sequence: the {idx}-th element "{elem}" does not satisfies type "{elemtype}" in the sequence {L}!')
-                         return False
-          ## 全ての要素が要素型を満たした
-          return True
+    if not isSeq: 
+        if verbose: print(f'warning: common.is_sequence: the object L is not of sequence type!: L={L}')
+        return False
+    else: ## isSeq==True
+        ## もしelemtypeが与えられていたら，さらに要素型をテストする
+        if elemtypes_ == None:
+            return True
+        else:
+            for idx, elem in enumerate(L):
+                res_ = False
+                for ty in elemtypes_: 
+                    if isinstance(elem, ty):
+                        res_ = True
+                        break
+                if not res_: 
+                    if verbose: print(f'warning: common.is_sequence: the {idx}-th element "{elem}" does not satisfies type "{elemtype}" in the sequence {L}!')
+                    return False
+        ## 全ての要素が要素型を満たした
+        return True
 
 def _normalize_elemtype(elemtype=None): 
      """関数is_typeof()の補助関数．受け取った型または型リストelemtypeを，型リストに変換して返す．
@@ -193,6 +226,10 @@ def ensure_defined(value=None, default=None, required=False):
 	else:
 		return value 
           
+##=====
+## 便利関数：図形データ
+##=====
+
 ##=====
 ## 便利関数：コマンドライン入力
 ##=====
