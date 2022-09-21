@@ -194,10 +194,27 @@ class BoardBase(log.Loggable):
     #=====
 
     def get_box(self):
+        """保持する自身の包含矩形を返す．
+
+        Returns: 
+             (tuple(num,num,num,num)) : 自身の包含矩形．親による自身の配置を規定する．
+        """
         _box = self.box 
         com.ensure(_box!=None and crt.isProperBox(_box),
                    f'get_box: box={_box} must be isProperBox')
         return _box
+
+    def get_trans(self):
+        """保持する変換を返す．
+
+        Returns: 
+             (GeoTransform) : 自身に適用する変換．自身の子の配置を規定する．
+        """
+        _trans = self.trans 
+        #self.transはNone（降等変換）でも良い．
+        com.ensure(_trans==None or isinstance(_trans, crt.GeoTransform),
+                   f'get_trans: trans={_trans} must be a GeoTrans')
+        return _trans 
 
     # exp 基本：配置の計算
     def _arrange(self):
@@ -310,8 +327,8 @@ class BoardBase(log.Loggable):
         ## 自分の空間を開く
         cr.save()  ##self
         ## 自身の変換を適用する
-        crt.cr_apply_trans(trans=self.trans, context=cr)
-        if True: print(f'@debug:draw:self:{self.myinfo()}: apply trans={self.trans}')
+        crt.cr_apply_trans(trans=self.get_trans(), context=cr)
+        if True: print(f'@debug:draw:self:{self.myinfo()}: apply trans={self.get_trans()}')
             
         #必要なら自分の描画を行う
         self.draw_me(cr)
@@ -672,7 +689,7 @@ class AnchorBoard(BoardBase):
         ##新しい変換で包含矩形を変換する
         self.box = _box
         
-        if True: print(f'@debug:arrange_self_transform:{self.myinfo()}: anchor={self.anchor} => src={_src} trans={self.trans}: box0={_box1} => box={_box}')
+        if True: print(f'@debug:arrange_self_transform:{self.myinfo()}: anchor={self.anchor} => src={_src} trans={self.get_trans()}: box0={_box1} => box={_box}')
         return 
 
     pass ##class AnchorBoard
@@ -979,6 +996,12 @@ class MarginWrapper(WrapperBoard):
           **kwargs : 他のキーワード引数．上位クラスに渡される．
 
     Attributes: 
+        margin (tuple(float,float)) : 余白情報 margin = (margin_x, margin_y). 
+
+        box (tuple(float,float,float,float)) : 修正された包含矩形．子の包含矩形の外側にmarginで指定したx方向とｙ方向の幅の余白を拡大した形状になる．関数`get_box()`で返される．
+
+        trans (GeoTransform) : 修正された変換．拡大された包含矩形の左上隅を原点とする．
+
         verbose (bool): ログ出力のフラグ
     """
     # def __init__(self, child=None, **kwargs):
@@ -1356,7 +1379,7 @@ class DrawRectangle(DrawCommandBase):
         crt.cr_rectangle(context=cr, **self.kwargs)
         if kw.get(self.kwargs, 'debug', default=False): 
             crt.cr_text(context=cr, ox=0, oy=0,
-                        msg=f'{self.trans}', fsize=CFSIZE) #debug
+                        msg=f'{self.get_trans()}', fsize=CFSIZE) #debug
             crt.cr_text(context=cr, ox=0, oy=2*CFSIZE, fsize=CFSIZE,
                         msg=f'box_={ self.box }') #debug
         if kw.get(self.kwargs, 'show_native_origin', default=False): 
@@ -1397,7 +1420,7 @@ class DrawCircle(DrawCommandBase):
         crt.cr_circle(context=cr, **self.kwargs) 
         if kw.get(self.kwargs, 'debug', default=False): 
             crt.cr_text(context=cr, ox=0, oy=0,
-                        msg=f'{self.trans}', fsize=CFSIZE)#debug
+                        msg=f'{self.get_trans()}', fsize=CFSIZE)#debug
             crt.cr_text(context=cr, ox=0, oy=2*CFSIZE, fsize=CFSIZE,
                         msg=f'box_={ self.box }') #debug
         if kw.get(self.kwargs, 'show_native_origin', default=False): 
