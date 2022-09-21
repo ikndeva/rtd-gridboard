@@ -51,6 +51,40 @@ DEFAULT_LINE_WIDTH=1
 # CMD_MOVE = 0
 # CMD_LINE = 1
 
+def numpair_normalize(margin=None, default=None):
+    """マージン指定を正規化する．margin が数の対(float,float)ならばそのまま返し，
+    margin が数ならば，(margin,margin)を返す．
+    margin==Noneのときは，(0.0,0.0)を返す．
+    """
+    if margin==None:
+        margin1 = com.ensure_defined(value=default,
+                                    default=(0.0, 0.0))
+    elif isinstance(margin, (float,int)): 
+        margin1 = (margin, margin)
+    elif com.is_sequence_type(margin, elemtype=(float,int), length=2):
+        margin1 = margin
+    else:
+        com.panic(f'margin={margin} must be either num or (num,num)!')
+    com.ensure(crt.isProperPoint(margin1),
+               f'margin={margin1} must be a pair of numbers')
+    return margin1 
+    
+def anchor_normalize(anchor=None, default=None):
+    """アンカー指定を正規化する．anchor がstrの対(str,str)ならばそのまま返し，
+    anchor がstrならば，(anchor,anchor)を返す．
+    anchor==Noneのときは，デフォールト値(left,top)を返す．
+    """
+    if anchor==None:
+        anchor = com.ensure_defined(value=default,
+                                    default=('left', 'top'))
+    elif isinstance(anchor, str):
+        anchor = (anchor, anchor)
+    elif com.is_sequence_type(anchor, elemtype=(str), length=2):
+        pass 
+    else:
+        com.panic(f'anchor={anchor} must be either str or (str,str)!')
+    return anchor 
+
 def perturb_point(x=0.0, y=0.0, max_perturb=0.0):
     """与えられた点 (x, y) に対して，幅
     [(-1)*max_perturb, (+1)*max_perturb] 
@@ -186,8 +220,6 @@ class BoardBase(log.Loggable):
 
         if True:
             print(f'@debug:trans:{self.myinfo()}: trans={self.trans}')
-        if self.verbose:
-            self.repo(msg=f'{self.myinfo()}._arrange()=> box={ boxes }', isChild=True)
         com.ensure(self.box != None, f'self.box={self.box} != None!')
         return self.box 
 
@@ -227,6 +259,8 @@ class BoardBase(log.Loggable):
         self.boxes = _boxes
         com.ensure(crt.isProperBox(self.boxes),
                    f'self.boxes={self.boxes} must be a box!')
+        if self.verbose:
+            self.repo(msg=f'{self.myinfo()}._arrange()=> box={ self.boxes }', isChild=True)
         return 
         
     #To be Override
@@ -789,9 +823,97 @@ class Canvas(Board):
 #=====
 # ラッパーのクラス
 #=====
+# class WrapperBoard(BoardBase):
+#     """ラッパーのクラス．唯一の子をもち，
+#     自身が持たないメソッド呼び出しを子に転送する．
+
+#     Args: 
+#           child (BoardBase) : 子として保持するBoardBaseオブジェクト．
+
+#           **kwargs : 他のキーワード引数．上位クラスに渡される．
+
+#     Attributes: 
+#         verbose (bool): ログ出力のフラグ
+#     """
+#     # def __init__(self, child=None, **kwargs):
+#     def __init__(self, child=None,
+#                  margin=None,
+#                  **kwargs):
+#         """画盤オブジェクトを初期化する
+#         """
+#         #引数
+#         #親Loggableの初期化
+#         super().__init__(max_children=1, #Can have at most one child
+#                          **kwargs)
+
+#         ##マージン
+#         self.margin = margin
+        
+#         ## 包み込む唯一の子を設定する
+#         com.ensure(child != None, f'child must be to None!')
+#         child.parent = None ##使用済みの子から親への参照を切る．破壊的代入．        
+#         self.put(trans=None, child=child)   #子に追加
+
+#         ## メソッド転送設定
+#         self.the_child = child  #転送先オブジェクト
+#         #内部変数
+#         if self.verbose:
+#             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
+#         return
+
+#     def get_the_child(self):
+#         _child = self.the_child
+#         com.ensure(isinstance(_child, BoardBase),
+#                    'child must be a subclass of BoardBase!: {_child}')
+#         return _child 
+
+#     # Override exp 基本：配置の計算
+#     def _arrange_self_box(self):
+#         """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
+#         次の属性を操作する: 
+
+#         * self.boxes  : 読み出し
+#         * self.box    : 書き込み
+#         * self.trans  : 書き込み
+
+#         crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
+#         """
+#         child_box = self.get_the_child().get_box()
+#         x0, y0, x1, y1 = child_box
+
+#         #変換を求める
+#         mx, my = numpair_normalize(margin=self.margin)
+#         _self_box = x0 - mx, y0 - my, x1 + mx, y1 + my
+#         xx0, yy0, xx1, yy1 = _self_box
+#         ## 
+#         dst = 0.0, 0.0
+#         src = xx0, yy0
+#         moves = crt.vt_sub(dst, src)  #moves = dst - src
+			
+# 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
+#         self.trans = crt.Translate(dest=moves)
+#         self.box = crt.box_apply_trans(_self_box, trans=self.trans)
+#         return self.box 
+    
+#     #=====
+#     ## メソッド転送
+#     #=====
+#     def __getattr__(self, name):
+#         """メソッドが未定義のとき，呼び出される特殊関数．
+# 		未定義の属性呼び出しのときも呼ばれるので注意．
+#         """
+#         if self.verbose:
+#             print(f'\t@WrapperBoard: method="__getattr__" is called')
+#         return bc.BackupCaller(self.the_child, name, verbose=True)
+
+#     #=====
+#     # 子のリスト
+#     #=====
+#     pass #class WrapperBoard
+
 class WrapperBoard(BoardBase):
-#class WrapperBoard(AnchorBoard):
-    """ラッパーのクラス．唯一の子をもち，指定された以外のメソッド呼び出しを子に転送する．
+    """ラッパーのクラス．唯一の子をもち，
+    自身が持たないメソッド呼び出しを子に転送する．
 
     Args: 
           child (BoardBase) : 子として保持するBoardBaseオブジェクト．
@@ -803,7 +925,6 @@ class WrapperBoard(BoardBase):
     """
     # def __init__(self, child=None, **kwargs):
     def __init__(self, child=None,
-                 margin=None,
                  **kwargs):
         """画盤オブジェクトを初期化する
         """
@@ -812,9 +933,6 @@ class WrapperBoard(BoardBase):
         super().__init__(max_children=1, #Can have at most one child
                          **kwargs)
 
-        ##マージン
-        self.margin = margin
-        
         ## 包み込む唯一の子を設定する
         com.ensure(child != None, f'child must be to None!')
         child.parent = None ##使用済みの子から親への参照を切る．破壊的代入．        
@@ -832,6 +950,55 @@ class WrapperBoard(BoardBase):
         com.ensure(isinstance(_child, BoardBase),
                    'child must be a subclass of BoardBase!: {_child}')
         return _child 
+    
+    #=====
+    ## メソッド転送
+    #=====
+    def __getattr__(self, name):
+        """メソッドが未定義のとき，呼び出される特殊関数．
+		未定義の属性呼び出しのときも呼ばれるので注意．
+        """
+        if self.verbose:
+            print(f'\t@WrapperBoard: method="__getattr__" is called')
+        return bc.BackupCaller(self.the_child, name, verbose=True)
+
+    #=====
+    # 子のリスト
+    #=====
+    pass #class WrapperBoard
+
+class MarginWrapper(WrapperBoard):
+    """唯一の子を指定した余白（margin）で包むラッパーのクラス，
+    自身が持たないメソッド呼び出しを子に転送する．
+
+    Args: 
+          child (BoardBase) : 子として保持するBoardBaseオブジェクト．
+
+          margin (float, tuple(float, float)) : 子の外周に付与する余白の情報
+
+          **kwargs : 他のキーワード引数．上位クラスに渡される．
+
+    Attributes: 
+        verbose (bool): ログ出力のフラグ
+    """
+    # def __init__(self, child=None, **kwargs):
+    def __init__(self, child=None,
+                 margin=None,
+                 **kwargs):
+        """画盤オブジェクトを初期化する
+        """
+        #引数
+        #親Loggableの初期化
+        super().__init__(child=child, 
+                         **kwargs)
+
+        ##マージン
+        self.margin = margin
+        
+        #内部変数
+        if self.verbose:
+            self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
+        return
 
     # Override exp 基本：配置の計算
     def _arrange_self_box(self):
@@ -847,148 +1014,25 @@ class WrapperBoard(BoardBase):
         child_box = self.get_the_child().get_box()
         x0, y0, x1, y1 = child_box
 
-        #変換
+        #変換を求める
         mx, my = numpair_normalize(margin=self.margin)
-        self_box = x0 - mx, y0 - my, x1 + mx, y1 + my
-        xx0, yy0, xx1, yy1 = self_box
-        org = 0.0, 0.0
+        _self_box = x0 - mx, y0 - my, x1 + mx, y1 + my
+        xx0, yy0, xx1, yy1 = _self_box
+        ## 
+        dst = 0.0, 0.0
         src = xx0, yy0
-        dest = crt.vt_sub(org, src)
-        # dest = (-1)*xx0, (-1)*yy0)
+        moves = crt.vt_sub(dst, src)  #moves = dst - src
 			
 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-        # self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
-        # self.box = crt.box_apply_trans(child_box, trans=self.trans)
-        self.trans = crt.Translate(dest=dest)
-        self.box = crt.box_apply_trans(self_box, trans=self.trans)
+        self.trans = crt.Translate(dest=moves)
+        self.box = crt.box_apply_trans(_self_box, trans=self.trans)
         return self.box 
     
-    # # Override exp 基本：配置の計算
-    # def _arrange_self_box(self):
-    #     """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
-    #     次の属性を操作する: 
-
-    #     * self.boxes  : 読み出し
-    #     * self.box    : 書き込み
-    #     * self.trans  : 書き込み
-
-    #     crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
-    #     """
-    #      child_box = self.get_the_child().get_box()
-    #     x0, y0, x1, y1 = child_box
-			
-	# 	#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-    #     self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
-    #     self.box = crt.box_apply_trans(child_box, trans=self.trans)
-    #     return self.box 
-    
-    # # Override exp 基本：配置の計算
-    # def _arrange_self_box(self):
-    #     """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
-    #     次の属性を操作する: 
-
-    #     * self.boxes  : 読み出し
-    #     * self.box    : 書き込み
-    #     * self.trans  : 書き込み
-
-    #     crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
-    #     """
-    #     for idx, pair in self.children_enumerated():
-    #         trans, child = pair #分解
-    #         #子の型チェック
-    #         com.ensure(isinstance(child, BoardBase),
-    #                    'child must be a subclass of BoardBase!: {child}')
-    #         #子の再帰処理
-    #         # child_box = child._arrange()
-    #         child_box = child.get_box()
-    #         x0, y0, x1, y1 = child_box
-			
-	# 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-    #         self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
-    #         self.box = crt.box_apply_trans(child_box, trans=self.trans)
-    #     return self.box 
-    
-    # # Override exp 基本：配置の計算
-    # def _arrange(self):
-    #     """配置を計算する．配置は，ボトムアップに再帰的に計算される．
-
-    #     Args: 
-
-    #     Returns: 
-    #     	rect: 計算済みの自身の包含矩形オブジェクト
-    #     """
-    #     if self.verbose:
-    #         self.repo(msg=f'{self.myinfo()}._arrange(): { self.vars() }')
-
-    #     for idx, pair in self.children_enumerated():
-    #         trans, child = pair #分解
-    #         #子の型チェック
-    #         com.ensure(isinstance(child, BoardBase),
-    #                    'child must be a subclass of BoardBase!: {child}')
-    #         #子の再帰処理
-    #         child_box = child._arrange()
-    #         x0, y0, x1, y1 = child_box
-			
-	# 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-    #         self.trans = crt.Translate(dest=((-1)*x0, (-1)*y0))
-    #         self.box = crt.box_apply_trans(child_box, trans=self.trans)
-                
-    #     if self.verbose:
-    #         self.repo(msg=f'{self.myinfo()}._arrange()=> box={ boxes }', isChild=True)
-    #     return self.box 
-
-    #=====
-    ## メソッド転送
-    #=====
-    def __getattr__(self, name):
-        """メソッドが未定義のとき，呼び出される特殊関数．
-		未定義の属性呼び出しのときも呼ばれるので注意．
-        """
-        if self.verbose:
-            print(f'\t@WrapperBoard: method="__getattr__" is called')
-        return bc.BackupCaller(self.the_child, name, verbose=True)
-
-    #=====
-    # 子のリスト
-    #=====
+    pass #class MarginWrapper 
     
 #=====
 # ボードの実装クラス
 #=====
-
-def numpair_normalize(margin=None, default=None):
-    """マージン指定を正規化する．margin が数の対(float,float)ならばそのまま返し，
-    margin が数ならば，(margin,margin)を返す．
-    margin==Noneのときは，(0.0,0.0)を返す．
-    """
-    if margin==None:
-        margin1 = com.ensure_defined(value=default,
-                                    default=(0.0, 0.0))
-    elif isinstance(margin, (float,int)): 
-        margin1 = (margin, margin)
-    elif com.is_sequence_type(margin, elemtype=(float,int), length=2):
-        margin1 = margin
-    else:
-        com.panic(f'margin={margin} must be either num or (num,num)!')
-    com.ensure(crt.isProperPoint(margin1),
-               f'margin={margin1} must be a pair of numbers')
-    return margin1 
-    
-def anchor_normalize(anchor=None, default=None):
-    """アンカー指定を正規化する．anchor がstrの対(str,str)ならばそのまま返し，
-    anchor がstrならば，(anchor,anchor)を返す．
-    anchor==Noneのときは，デフォールト値(left,top)を返す．
-    """
-    if anchor==None:
-        anchor = com.ensure_defined(value=default,
-                                    default=('left', 'top'))
-    elif isinstance(anchor, str):
-        anchor = (anchor, anchor)
-    elif com.is_sequence_type(anchor, elemtype=(str), length=2):
-        pass 
-    else:
-        com.panic(f'anchor={anchor} must be either str or (str,str)!')
-    return anchor 
 
 # class PackerBoard(AnchorBoard):
 class PackerBoard(Board):
@@ -1050,16 +1094,30 @@ class PackerBoard(Board):
         		child = parent.add(Rectangle())
         		child = parent.add(Circle())
         """
-        # com.ensure(child != None, f'child must be to None!')
-        # print(f'@debug: self={self.myinfo(depth=True)} child={child.myinfo(depth=True)}')
-        # return self.put(trans=None, child=child) #exp
         com.ensure(child != None, f'child must be to None!')
         print(f'@debug: self={self.myinfo(depth=True)} child={child.myinfo(depth=True)}')
+        
         #exp: ラッパーで包んでから，子リストに加える
-        child1 = WrapperBoard(child=child,
+        _debug_wrapper = {}
+        if self.fetch(key='verbose', default=False): 
+            _debug_wrapper = {
+                #デバッグ用の包含矩形描画
+                'show_box': True,
+                # rgb_box=crt.MYCOL['magenta'],
+                'rgb_box':  crt.cr_add_alpha(crt.MYCOL['magenta'], alpha=0.5),
+                #デバッグ用の原点描画
+                'show_origin':  True,
+                'rgb_origin':  crt.MYCOL['blue'],
+                'angle_origin':  (math.pi/4)*0,
+            }
+        child1 = MarginWrapper(child=child,
                               margin=self.cell_margin, 
-                              **PackerBoard._debug_wrapper, #デバッグ表示用
+                              **_debug_wrapper, #デバッグ表示用
                               ) 
+        # child1 = WrapperBoard(child=child,
+        #                       margin=self.cell_margin, 
+        #                       **PackerBoard._debug_wrapper, #デバッグ表示用
+        #                       ) 
         # child1 = WrapperBoard(child=child,
         #                       **PackerBoard._debug_wrapper, #デバッグ表示用
         #                       ) 
@@ -1117,16 +1175,6 @@ class PackerBoard(Board):
             num_shape += 1
         return max_shape, sum_shape, num_shape
 
-    _debug_wrapper = {
-        #デバッグ用の包含矩形描画
-        'show_box': True,
-        # rgb_box=crt.MYCOL['magenta'],
-        'rgb_box':  crt.cr_add_alpha(crt.MYCOL['magenta'], alpha=0.5),
-        #デバッグ用の原点描画
-        'show_origin':  True,
-        'rgb_origin':  crt.MYCOL['blue'],
-        'angle_origin':  (math.pi/4)*0,
-    }
 
     def _get_axes(align=None):
         """与えられた文字列align (str)に応じて，主軸と副軸の添字の対 AX_PRI, AX_SEC を返す．

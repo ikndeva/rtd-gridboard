@@ -42,6 +42,12 @@ def reading_args_and_options():
     ## align 
     ap.add_argument('-a', '--align', type=str, 
                     help='set align to str')
+    ## boundingbox
+    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## margin 
+    ap.add_argument('-m', '--margin', type=float, 
+                    help='set margin to float in [0,1]')
     ## pack 
     ap.add_argument('-p', '--pack', action='store_true', default=False, 
                     help='show verbose messages')
@@ -51,9 +57,6 @@ def reading_args_and_options():
     ## anchor 
     ap.add_argument('-y', '--anchor_y', type=str, 
                     help='set anchor_y to str')
-    ## boundingbox
-    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
-                    help='show verbose messages')
     ## verbose 
     ap.add_argument('-v', '--verbose', action='store_true', default=False, 
                     help='show verbose messages')
@@ -129,6 +132,11 @@ if __name__ == '__main__':
     
     #===== 図形のテスト ==============================
     # 格子点に図形をおく
+    if opt.margin: 
+        m_ratio = opt.margin
+    else:
+        m_ratio = 1.0 
+    
     ## row
     if not opt.align: opt.align = 'y'
     if opt.align in ('x'): align_outer, align_inner = 'y', 'x'
@@ -137,8 +145,6 @@ if __name__ == '__main__':
     VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
                               child=bd.PackerBoard(align=align_outer,
                                                    pack=False,
-                                                   margin=0, 
-                                                   # margin=hspan/4, 
                                                    ))
     
     oid = 0
@@ -146,8 +152,8 @@ if __name__ == '__main__':
         Row = VStack.add(child=bd.PackerBoard(align=align_inner,
                                               pack=opt.pack, 
                                               # pack_anchor='mid', 
-                                              margin=0, 
-                                              # margin=hspan/4, 
+                                              cell_margin=hspan*m_ratio, 
+                                              # cell_margin=hspan/4, 
                                               ))
         for j in range(hnum): #列
             rgb = COLS[oid % vnum ]
