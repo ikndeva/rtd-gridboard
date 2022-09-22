@@ -68,70 +68,70 @@ def report_module_path(name):
           log(f' - { d }')
           log(f'@paths end')
 
-def elemtype_normalize(elemtype=None):
-    """与えられた入力オブジェクトelemtypeが，正しい型オブジェクトかを検査し，
-    型リストelemtypes_を返す．もしそうでなければ，エラーを投げて異常終了する．
-    ただし，elemtype==Noneのときは，そのまま返す（任意の型を表す）．
+def elemtype_normalize(etype=None):
+    """与えられた入力オブジェクトetypeが，正しい型オブジェクトかを検査し，
+    型リストetypes_を返す．もしそうでなければ，エラーを投げて異常終了する．
+    ただし，etype==Noneのときは，そのまま返す（任意の型を表す）．
 
     Args: 
-         elemtype (Object) : 基礎型，または，基礎型のリスト（和）
+         etype (Object) : 基礎型，または，基礎型のリスト（和）
 
     Returns: 
          (list(型)) : 正規化された型リスト
     """
-    if elemtype == None:
-        return elemtype
+    if etype == None:
+        return etype
     
-    elemtypes_ = None ## 作業用：a list for a union type
-    if isinstance(elemtype, type): ## primitive type
-        elemtypes_ = [elemtype]
-    elif isinstance(elemtype, tuple): ##union type
-        elemtypes_ = []
-        for idx, ty in enumerate(elemtype):
+    etypes_ = None ## 作業用：a list for a union type
+    if isinstance(etype, type): ## primitive type
+        etypes_ = [etype]
+    elif isinstance(etype, tuple): ##union type
+        etypes_ = []
+        for idx, ty in enumerate(etype):
             if isinstance(ty, type):
-                elemtypes_.append(ty)
+                etypes_.append(ty)
             else: 
                 panic(f'common.is_sequence: the {idx}-th element "{ ty }"'+
-                      f' of elemtype must be a type object!')
+                      f' of etype must be a type object!')
         pass 
     else: 
-        panic(f'common.is_sequence: elemtype="{elemetype}"'+
+        panic(f'common.is_sequence: etype="{etype}"'+
               f' must be a type object!')
-    return elemtypes_ 
+    return etypes_ 
 
 
 
-def is_sequence_type(L, elemtype=None, length=None, verbose=False):
+def is_seq_type(L, etype=None, dim=None, verbose=False):
     """オブジェクトLが，指定された型と長さをもつ系列オブジェクトかを真偽で返す．
-    さらに系列型であり，elemtypeがNoneでないときに，系列の全ての要素が型elemtypeをもつならば`True`，そうでなければ`False`を返す．
+    さらに系列型であり，etypeがNoneでないときに，系列の全ての要素が型etypeをもつならば`True`，そうでなければ`False`を返す．
 
     Args: 
          L (object) : オブジェクト
 
-         elemtype (Type) : int, float, strなどのprimitive型，または，型の選言（union type）を表すリスト `(ty1, ..., tyN)`. 
+         etype (Type) : int, float, strなどのprimitive型，または，型の選言（union etype）を表すリスト `(ty1, ..., tyN)`. 
 
          length (int) : 系列が満たすべき長さ
 
          verbose (bool) : ログ出力のスイッチ
 
     Returns: 
-         (bool) : オブジェクトLが，elemtypeの型指定を満たす系列型ならば`True`を, そうでなければ`False`を返す．
+         (bool) : オブジェクトLが，etypeの型指定を満たす系列型ならば`True`を, そうでなければ`False`を返す．
 
     Example:: 
 
-       >>> com.is_sequence_type([1,2,3], elemtype=int)
+       >>> com.is_seq_type([1,2,3], etype=int)
        True
-       >>> com.is_sequence_type([1,2.0,3], elemtype=int)
+       >>> com.is_seq_type([1,2.0,3], etype=int)
        False
-       >>> com.is_sequence_type([1,2.0,3], elemtype=(int, float))
+       >>> com.is_seq_type([1,2.0,3], etype=(int, float))
        True
-       >>> com.is_sequence_type([1,'b',3], elemtype=int)
+       >>> com.is_seq_type([1,'b',3], etype=int)
        False
-       >>> com.is_sequence_type([1,'b',3], elemtype=(int, str))     
+       >>> com.is_seq_type([1,'b',3], etype=(int, str))     
        True 
     """
     ## 型引数のテスト
-    elemtypes_ = elemtype_normalize(elemtype)
+    etypes_ = elemtype_normalize(etype)
      
     ## 系列型かどうかをテスト
     if isinstance(L, tuple) or isinstance(L, list):
@@ -143,66 +143,66 @@ def is_sequence_type(L, elemtype=None, length=None, verbose=False):
         isSeq = False
 
     ##長さテスト
-    if isSeq and length!=None and len(L) != length:
-        if verbose: print(f'warning: common.is_sequence: it must have length={length} but len={len(L)}!')
+    if isSeq and dim!=None and len(L) != dim:
+        if verbose: print(f'warning: common.is_sequence: it must have dim={dim} but len={len(L)}!')
         return False
      
     if not isSeq: 
         if verbose: print(f'warning: common.is_sequence: the object L is not of sequence type!: L={L}')
         return False
     else: ## isSeq==True
-        ## もしelemtypeが与えられていたら，さらに要素型をテストする
-        if elemtypes_ == None:
+        ## もしtypeが与えられていたら，さらに要素型をテストする
+        if etypes_ == None:
             return True
         else:
             for idx, elem in enumerate(L):
                 res_ = False
-                for ty in elemtypes_: 
+                for ty in etypes_: 
                     if isinstance(elem, ty):
                         res_ = True
                         break
                 if not res_: 
-                    if verbose: print(f'warning: common.is_sequence: the {idx}-th element "{elem}" does not satisfies type "{elemtype}" in the sequence {L}!')
+                    if verbose: print(f'warning: common.is_sequence: the {idx}-th element "{elem}" does not satisfies etype "{etype}" in the sequence {L}!')
                     return False
         ## 全ての要素が要素型を満たした
         return True
 
-def _normalize_elemtype(elemtype=None): 
+def _normalize_elemtype(etype=None): 
      """関数is_typeof()の補助関数．受け取った型または型リストelemtypeを，型リストに変換して返す．
      """
-     elemtypes_ = None ## 作業用：a list for a union type
-     if elemtype == None:
-          panic(f'normalize_elemtype: elemtype must be non-None!')
+     etypes_ = None ## 作業用：a list for a union type
+     if etype == None:
+          panic(f'normalize_etype: etype must be non-None!')
      else:
-          if isinstance(elemtype, type): ## primitive type
-               elemtypes_ = [elemtype]
-          elif isinstance(elemtype, tuple): ##union type
-               elemtypes_ = []
-               for idx, ty in enumerate(elemtype):
+          if isinstance(etype, type): ## primitive type
+               etypes_ = [etype]
+          elif isinstance(etype, tuple): ##union type
+               etypes_ = []
+               for idx, ty in enumerate(etype):
                     if isinstance(ty, type):
-                         elemtypes_.append(ty)
+                         etypes_.append(ty)
                     else: 
-                         panic(f'normalize_elemtype: the {idx}-th element "{ ty }" of elemtype must be a type object!')
+                         panic(f'normalize_etype: the {idx}-th element "{ ty }" of etype must be a type object!')
           else: 
-               panic(f'normalize_elemtype: elemtype="{elemetype}" must be a type object!')
-     return elemtypes_
+               panic(f'normalize_elemtype: etype="{elemetype}" must be a type object!')
+     return etypes_
           
-def is_typeof(obj, elemtype=None):
-     """オブジェクトobjが空でなく，型elemtypeをもつとき，`True`を返し，それ以外のとき`False`を返す．
+def is_typeof(obj, etype=None):
+     """オブジェクトobjが空でなく，型etypeをもつとき，`True`を返し，それ以外のとき`False`を返す．
 
      Args: 
           obj (object) : オブジェクト
 
-          elemtype (Type) : 型のリスト`(ty1, ..., tyN)`．
+          etype (Type) : 型のリスト`(ty1, ..., tyN)`．
 
      Returns: 
-          (bool) : オブジェクトobjが，elemtypeの型指定を満たすならば`True`を, そうでなければ`False`を返す．
+          (bool) : オブジェクトobjが，etypeの型指定を満たすならば`True`を, そうでなければ`False`を返す．
      """
      ## 引数テスト: 型リストに正規化する．単一型tは，単一元リスト(t)とする．
-     elemtypes_ = _normalize_elemtype(elemtype=elemtype)
+     etypes_ = _normalize_elemtype(etype=etype)
      
      ## 要素型をテストする
-     for ty in elemtypes_: 
+     for ty in etypes_: 
           if isinstance(obj, ty):  
                return True  ##型tyを満たした
      return False ##どの型も満たさない

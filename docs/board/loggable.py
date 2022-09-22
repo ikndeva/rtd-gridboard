@@ -261,8 +261,8 @@ class Loggable:
         """
         #子の型チェック
         com.ensure((pair != None and
-                    com.is_sequence_type(pair, elemtype=None, length=2)),
-                   ##elemtype=Noneは任意の型を許し，長さ=2のみテストする
+                    com.is_seq_type(pair, etype=None, dim=2)),
+                   ##etype=Noneは任意の型を許し，長さ=2のみテストする
                    f'{self.myinfo()}.put(): pair={pair} must be a pair of trans and child board!')
         trans, child = pair 
         #子の型チェック
@@ -306,8 +306,8 @@ class Loggable:
         """
         #子の型チェック
         com.ensure((pair != None and
-                    com.is_sequence_type(pair, elemtype=None, length=2)),
-                   ##elemtype=Noneは任意の型を許し，長さ=2のみテストする
+                    com.is_seq_type(pair, etype=None, dim=2)),
+                   ##etype=Noneは任意の型を許し，長さ=2のみテストする
                    f'{self.myinfo()}.put(): pair={pair} must be a pair of trans and child board!')
         trans, child = pair 
         # com.ensure(trans != None and isinstance(trans, GeoTransform),
@@ -386,7 +386,7 @@ class Loggable:
             self.tags = []
         if isinstance(tags, str):
             self.tags.append(tags)
-        elif com.is_sequence_type(tags, elemtype=str):
+        elif com.is_seq_type(tags, etype=str):
             for a_tag in tags:
                 if not (a_tag in self.tags): 
                     self.tags.append(a_tag)

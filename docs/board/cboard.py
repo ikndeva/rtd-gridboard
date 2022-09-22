@@ -61,7 +61,7 @@ def numpair_normalize(margin=None, default=None):
                                     default=(0.0, 0.0))
     elif isinstance(margin, (float,int)): 
         margin1 = (margin, margin)
-    elif com.is_sequence_type(margin, elemtype=(float,int), length=2):
+    elif com.is_seq_type(margin, etype=(float,int), dim=2):
         margin1 = margin
     else:
         com.panic(f'margin={margin} must be either float or (float,float)!')
@@ -115,6 +115,8 @@ class BoardBase(log.Loggable):
     """図形（Board）の描画に関する基本機能を提供するクラス．子孫クラスから呼び出される二つの私的関数`_arrange()`と`_draw(self, cr)`を提供する．
 
     Args: 
+         anchor_str (str, tuple(str,str)) : 文字列対によるアンカー表記．それ自体が`None`でも良いし，対の片方または両方の要素が`None`を取っても良い．
+
          **kwargs : 他のキーワード引数．上位クラスに渡される．
 
     Attributes: 
@@ -123,6 +125,8 @@ class BoardBase(log.Loggable):
          box   (tuple(float,float,float,float)) : 自身の包含矩形.
 
          boxes (float,float,float,float) : 子全体の包含矩形.
+
+         anchor (tuple(float,float)) : 正規化アンカーベクトル `a = (ax,ay) in [0,1]^2`．配置時点での包含矩形に対する原点の相対位置を表す．
 
          verbose (bool): ログ出力のフラグ
 
@@ -140,6 +144,23 @@ class BoardBase(log.Loggable):
              * `draw_me_before(self, cr)`: Cairoの文脈オブジェクト`cr`を受け取り，子の描画の前に，自身を描画する手続きを定義する．
 
              * `draw_me_after(self, cr)`: Cairoの文脈オブジェクト`cr`を受け取り，子の描画の後に，自身を描画する手続きを定義する．
+
+    Note: 
+
+        アンカー表記の対の要素に`None`を許す．
+
+        * アンカー表記自身が`None`のときは，値としてDEFAULT_ANCHOR_STRをとる．現在は，`ANCHOR_STR_ORIGIN = ('left','top')`である．
+
+        * 対の要素が`None`のときは，値`None`を，`mid`に相当する値`DEFAULT_ANCHOR_VALUE = 0.5`に置き換える．
+
+    Example::
+
+            anchor=('left' , 'top') => (0.0, 0.0)
+            anchor=('mid'  , 'mid') => (0.5, 0.5)
+            anchor=('right', 'bot') => (1.0, 1.0)
+            anchor=('left' ,  None) => (0.0, 0.5)
+            anchor=(None   , 'top') => (0.5, 0.0)
+
     """
     def __init__(self,
                  anchor=None,
@@ -204,11 +225,14 @@ class BoardBase(log.Loggable):
     def get_anchor(self) -> 'tuple(float,float)':
         """自身の包含矩形上のアンカー点（配置の原点）を返す．ここに，各種の配置関数`_arrange()`は，アンカー点を原点として図形を配置する．
 
-        Attributes: 
-self.anchor (tuple(float,float)) : 正規化アンカーベクトル `a = (ax,ay) in [0,1]^2`
-
         Returns: 
              (tuple(float, float)) : 2次元平面上のアンカー点 `b = (bx,by) in R^2`
+
+        Note: 
+            返り値は，次の属性に保持されている．
+
+            * self.anchor (tuple(float,float)) : 正規化アンカーベクトル `a = (ax,ay) in [0,1]^2`
+
         """
         com.ensure((self.anchor != None and
                     crt.isProperPoint(self.anchor)),
@@ -957,7 +981,7 @@ class PackerBoard(CoreBoard):
         idx = 0
         for trans, child in self.children_:
             #子の型チェック
-            com.ensure(isinstance(child, BoardBase),
+            com.ensure(child != None and isinstance(child, BoardBase),
                        'child must be a subclass of BoardBase!: {child}')
             child_box = child.get_box()
             triple = trans, child, child_box
@@ -1016,8 +1040,8 @@ class PackerBoard(CoreBoard):
 
         # 内部の子ボードの形状サイズ指定
         _ishape = [None, None] #内部のさや(pod)の形状サイズ．可変データ
-        com.ensure(com.is_sequence_type(_max_shape, elemtype=(float,int),
-                                        length=2, verbose=True),
+        com.ensure(com.is_seq_type(_max_shape, etype=(float,int),
+                                   dim=2, verbose=True),
                    f'max_shape={_max_shape} must be a pair of numbers!')
         _ishape = _max_shape
         if self.packing==None:

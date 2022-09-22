@@ -290,7 +290,7 @@ def isBoxOrPoint(box):
     """
     if box==None:
         return False
-    elif com.is_sequence_type(box, elemtype=(float,int)): 
+    elif com.is_seq_type(box, etype=(float,int)): 
         if (len(box) == 2) or (len(box) == 4):
             return True
         else:
@@ -385,7 +385,7 @@ def _anchor_str_normalize(anchor_str=None, default=None):
                                         default=ANCHOR_STR_ORIGIN)
     elif isinstance(anchor_str, str):
         anchor_str = (anchor_str, anchor_str)
-    elif com.is_sequence_type(anchor_str, elemtype=(str), length=2):
+    elif com.is_seq_type(anchor_str, etype=(str), dim=2):
         pass 
     else:
         com.panic(f'anchor_str={anchor_str} must be either str or (str,str)!')
@@ -476,7 +476,7 @@ def get_display_shape(shape=None, portrait=None):
     elif (isinstance(shape, str) and
         shape in DISPLAY_SHAPE): 
         _shape = DISPLAY_SHAPE[shape]
-    elif com.is_sequence_type(shape, elemtype=(float,int), length=2):
+    elif com.is_seq_type(shape, etype=(float,int), dim=2):
         _shape = shape
     else:
         com.panic(f'shape={shape} must be either (str) or (number,number)!')
@@ -565,7 +565,7 @@ class ImageBoard:
         self.myoutfile = mybody + "." + OFILE_EXT #ファイル名
 
         ##画像サイズ
-        com.ensure(com.is_sequence_type(self.display_shape, elemtype=(int, float)),
+        com.ensure(com.is_seq_type(self.display_shape, etype=(int, float)),
                    f'display_shape must be a pair of numbers: {display_shape}')
         
         ## Cairoのサーフェースの生成
@@ -929,7 +929,7 @@ def cr_arrow_head(x, y, x_last, y_last, context=None,
         return 
 
     ## 矢印処理
-    com.ensure(com.is_sequence_type((x, y, x_last, y_last), elemtype=(float, int)),
+    com.ensure(com.is_seq_type((x, y, x_last, y_last), etype=(float, int)),
                f'crtool.cr_arrow_head: x, y, x_last, y_last'+
                f'={ x, y, x_last, y_last } must be float or int!')
     #lineの方向line_angleを計算する
@@ -1032,7 +1032,7 @@ def cr_rectangle(x=None, y=None, width=None, height=None,
     """
     ## 文脈パラメータ設定
     cr_set_context_parameters(context=context, **kwargs)
-    com.ensure(com.is_sequence_type((x,y,width, height), elemtype=(float, int)),
+    com.ensure(com.is_seq_type((x,y,width, height), etype=(float, int)),
                f'(x,y,width, height)={(x,y,width, height)} must be numbers!')
     if edge_rgb:
         #fill and edge

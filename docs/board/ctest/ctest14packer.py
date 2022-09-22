@@ -40,6 +40,9 @@ def reading_args_and_options():
     # ## options: main 
     # ap.add_argument('-l', '--maxlen', type=int,
     #                 help='specify maximum length of messages')
+    ## margin 
+    ap.add_argument('-m', '--margin', type=float, 
+                    help='set margin to float in [0,1]')
     ## orient 
     ap.add_argument('-o', '--orient', type=str, 
                     help='set orient to str')
@@ -102,6 +105,11 @@ if __name__ == '__main__':
 
     cr.set_line_width(line_width)
 
+    if opt.margin: 
+        m_ratio = opt.margin
+    else:
+        m_ratio = 1.0 
+    
     #====== テスト ==============================
     # cboard.Board の構成実験
     LEAF_LIST = [] #オブジェクト木の葉の集合
@@ -147,9 +155,8 @@ if __name__ == '__main__':
         Row = VStack.add(child=bd.PackerBoard(orient=orient_inner,
                                               pack=opt.pack, 
                                               # pack_anchor='mid', 
-                                              # cell_margin=0, 
-                                              # cell_margin=hspan/4, 
-                                              cell_margin=hspan/2, 
+                                              # cell_margin=hspan/2, 
+                                              cell_margin=hspan*m_ratio, 
                                               ))
         for j in range(hnum): #列
             C = random.random() #[0,1]の乱数
