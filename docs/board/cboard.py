@@ -548,6 +548,9 @@ class WrapperBoard(BoardBase):
     #=====
     pass #class WrapperBoard
 
+#=====
+# ラッパーのサブクラス
+#=====
 class MarginWrapper(WrapperBoard):
     """唯一の子を指定した余白（margin）で包むラッパーのクラス，
     自身が持たないメソッド呼び出しを子に転送する．
@@ -617,6 +620,26 @@ class MarginWrapper(WrapperBoard):
     
     pass #class MarginWrapper 
     
+#=====
+# ラッパーのサブクラス
+#=====
+#old: class Board(AnchorBoard):
+class SideWrapper(WrapperBoard):
+    """唯一の子を，指定した側面（`side`）に基づいて配置するラッパーのクラス．
+    自身が持たないメソッド呼び出しを子に転送する．
+
+    Args: 
+          **kwargs : 他のキーワード引数．上位クラスに渡される．
+    """
+    def __init__(self, **kwargs):
+        """画盤オブジェクトを初期化する
+        """
+        #引数
+        super().__init__(**kwargs)
+        if self.verbose:
+            self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
+        return
+
 #=====
 # ボードの実装クラス
 #=====

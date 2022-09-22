@@ -1252,7 +1252,7 @@ class GeoTransform():
               y (float) : 適用対象の点のy座標
 
         Returns: 
-              (tuple(flaot, float)) : 変換後の点(x1, y1)
+              (tuple(float, float)) : 変換後の点(x1, y1)
         """
         return x, y
     
@@ -1323,7 +1323,7 @@ class Translate(GeoTransform):
               y (float) : 適用対象の点のy座標
 
         Returns: 
-              (tuple(flaot, float)) : 変換後の点(x1, y1)
+              (tuple(float, float)) : 変換後の点(x1, y1)
         """
         com.ensure(isProperPoint((x, y)), f'p={ x, y } must be a point!')
         x1, y1 = x + self.x, y + self.y
@@ -1369,7 +1369,7 @@ class Rotate(GeoTransform):
               y (float) : 適用対象の点のy座標
 
         Returns: 
-              (tuple(flaot, float)) : 変換後の点(x1, y1)
+              (tuple(float, float)) : 変換後の点(x1, y1)
         """
         com.ensure(isProperPoint((x, y)), f'p={ x, y } must be a point!')
         #2次元の回転
