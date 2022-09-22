@@ -40,9 +40,9 @@ def reading_args_and_options():
     # ## options: main 
     # ap.add_argument('-l', '--maxlen', type=int,
     #                 help='specify maximum length of messages')
-    ## align 
-    ap.add_argument('-a', '--align', type=str, 
-                    help='set align to str')
+    ## orient 
+    ap.add_argument('-o', '--orient', type=str, 
+                    help='set orient to str')
     ## pack 
     ap.add_argument('-p', '--pack', action='store_true', default=False, 
                     help='show verbose messages')
@@ -131,12 +131,12 @@ if __name__ == '__main__':
     #===== 図形のテスト ==============================
     # 格子点に図形をおく
     ## row
-    if not opt.align: opt.align = 'y'
-    if opt.align in ('x'): align_outer, align_inner = 'y', 'x'
-    else: align_outer, align_inner = 'x', 'y'
+    if not opt.orient: opt.orient = 'y'
+    if opt.orient in ('x'): orient_outer, orient_inner = 'y', 'x'
+    else: orient_outer, orient_inner = 'x', 'y'
 
     VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
-                              child=bd.PackerBoard(align=align_outer,
+                              child=bd.PackerBoard(orient=orient_outer,
                                                    pack=False,
                                                    # cell_margin=0, 
                                                    # cell_margin=hspan/4, 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     
     oid = 0
     for i in range(vnum): #行
-        Row = VStack.add(child=bd.PackerBoard(align=align_inner,
+        Row = VStack.add(child=bd.PackerBoard(orient=orient_inner,
                                               pack=opt.pack, 
                                               # pack_anchor='mid', 
                                               # cell_margin=0, 

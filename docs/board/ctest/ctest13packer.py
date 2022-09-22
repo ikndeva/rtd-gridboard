@@ -39,9 +39,9 @@ def reading_args_and_options():
     # ## options: main 
     # ap.add_argument('-l', '--maxlen', type=int,
     #                 help='specify maximum length of messages')
-    ## align 
-    ap.add_argument('-a', '--align', type=str, 
-                    help='set align to str')
+    ## orient 
+    ap.add_argument('-o', '--orient', type=str, 
+                    help='set orient to str')
     ## boundingbox
     ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
                     help='show verbose messages')
@@ -138,18 +138,18 @@ if __name__ == '__main__':
         m_ratio = 1.0 
     
     ## row
-    if not opt.align: opt.align = 'y'
-    if opt.align in ('x'): align_outer, align_inner = 'y', 'x'
-    else: align_outer, align_inner = 'x', 'y'
+    if not opt.orient: opt.orient = 'y'
+    if opt.orient in ('x'): orient_outer, orient_inner = 'y', 'x'
+    else: orient_outer, orient_inner = 'x', 'y'
 
     VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
-                              child=bd.PackerBoard(align=align_outer,
+                              child=bd.PackerBoard(orient=orient_outer,
                                                    pack=False,
                                                    ))
     
     oid = 0
     for i in range(vnum): #行
-        Row = VStack.add(child=bd.PackerBoard(align=align_inner,
+        Row = VStack.add(child=bd.PackerBoard(orient=orient_inner,
                                               pack=opt.pack, 
                                               # pack_anchor='mid', 
                                               cell_margin=hspan*m_ratio, 

@@ -29,12 +29,6 @@ testall:
 	make $(TESTDIR)/ctest10randwalk.test
 	make $(TESTDIR)/ctest11randwalk.test
 
-# クラス図とパッケージ図
-## required: [pip] pylint (pyreverse), [brew] graphviz (dot)
-## クラス図とパッケージ図を生成する
-class:
-	pyreverse -k -o pdf board
-
 ##
 color_chart: 
 	python3 color_chart.py

@@ -153,7 +153,7 @@ def extract(kwargs=None, keys=[],
         	kwargs1 = 
 		  kw.extract(kwargs=kwargs, 
 		     keys=['xy', 'text', 'font', 'size', 
-    			'anchor', 'align', 'direction',])
+    			'anchor', 'orient', 'direction',])
 
     	例: 指定属性 'margin', 'padding' 以外の全ての属性を取り出す::
 

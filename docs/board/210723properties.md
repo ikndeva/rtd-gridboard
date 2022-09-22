@@ -129,7 +129,7 @@ $\iff$ offset := **xy**[0] - (anchor_point - **bb**[0])
 
 * `size == pack`: 
 * `direction in (vertical, horizontal, grid)`: 
-* `align in (pack)`: 
+* `orient in (pack)`: 
 * `margin`. オブジェクト`Spacer(margin=float, grue=float)`を間に挿入する．
 
 ### 親自身がサイズ指定をもつとき
@@ -138,7 +138,7 @@ $\iff$ offset := **xy**[0] - (anchor_point - **bb**[0])
 
 * `size == fixed`
 * `direction in (vertical, horizontal)`: 
-* `align in (left, right, even)`: 
+* `orient in (left, right, even)`: 
 * `margin`. オブジェクト`Spacer(margin=float, grue=float)`を間に挿入する．
 
 このとき，子自身に**拡大縮小型** `elastic in (fixed, iso, aniso, any)`をもたせるのが良いだろう．型が`fixed`ならば拡大縮小できない，`iso`ならば等方的にのみ拡大縮小でき，`(any, aniso, None)`ならば二方向に自由に拡大縮小できる．
@@ -175,7 +175,7 @@ class Board
 上記で，型は次の通り
 
 * `num`は，数値 `(int, float)`. 
-* `p`は，点または数値対`(num, num)`
+* `p`は，点または数値対`tuple(float,float)`
 * `rect`は，点対`[p, p]`
 * `*`は，変換対象の属性を表す．
 

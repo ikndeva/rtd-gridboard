@@ -166,19 +166,18 @@ DARKCOL={
 DEFAULT_HEAD_SHAPE = 'sharp'
 
 ## 軸
-ALIGN_X = {
+ORIENT_X = {
     'x' : True, 
 }
-ALIGN_Y = {
+ORIENT_Y = {
     'y' : True, 
 }
 
 ## 位置合わせ
-ANCHOR_ORIGIN = ('left','top') #左上原点のアンカー指定
-DEFAULT_ANCHOR_X = 'left'
-DEFAULT_ANCHOR_Y = 'top'
-DEFAULT_ALIGN_RATIO_X = 0.0 #not used 
-DEFAULT_ALIGN_RATIO_Y = 0.0 #not used 
+ANCHOR_STR_ORIGIN = ('left','top') #左上のアンカー指定
+ANCHOR_STR_CENTER = ('mid','mid') #中央のアンカー指定
+DEFAULT_ANCHOR_STR = ANCHOR_STR_ORIGIN
+DEFAULT_ANCHOR_VALUE = 0.5 #not used 
 
 ANCHOR_X = {
     'left'   : 0.0, 
@@ -203,6 +202,258 @@ ANCHOR_Y = {
     'above'  : 0.0, 
     'below'  : 1.0, 
 }
+
+#==========
+# 便利関数
+#==========
+
+#===========
+# vector 
+#===========
+def vt_add(vec0, vec1):
+    """二つのベクトルvec0, vec1の成分和のベクトル`vec0 + vec1`を返す．
+    
+    Args: 
+         vec0 (tuple(float,float)) : vec0 = (x0, y0)
+
+         vec1 (tuple(float,float)) : vec1 = (x1, y1)
+
+    Returns: 
+         (tuple(float,float)) : vec = (x0+x1, y0+y1)
+    """
+    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
+    return vec0[0]+vec1[0], vec0[1]+vec1[1]
+
+def vt_sub(vec0, vec1):
+    """二つのベクトルvec0, vec1の成分差のベクトル`vec0 - vec1`を返す．
+    
+    Args: 
+         vec0 (tuple(float,float)) : vec0 = (x0, y0)
+
+         vec1 (tuple(float,float)) : vec1 = (x1, y1)
+
+    Returns: 
+         (tuple(float,float)) : vec = (x0-x1, y0-y1)
+    """
+    return vt_add(vec0, vt_scale(vec1, scale=(-1.0)))
+
+def vt_mult(vec0, vec1):
+    """二つのベクトルvec0, vec1の成分ごと積のベクトル`vec0 * vec1`を返す．
+    
+    Args: 
+         vec0 (tuple(float,float)) : vec0 = (x0, y0)
+
+         vec1 (tuple(float,float)) : vec1 = (x1, y1)
+
+    Returns: 
+         (tuple(float,float)) : vec = (x0*x1, y0*y1)
+    """
+    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
+    return vec0[0]*vec1[0], vec0[1]*vec1[1]
+
+def vt_scale(vec0, scale=None):
+    """ベクトルvec0とスカラーscaleの積のベクトル`scale * vec0`を返す．
+    
+    Args: 
+         vec0 (tuple(float,float)) : ベクトル vec0 = (x0, y0)
+
+         scale (num) : スカラー
+
+    Returns: 
+         (tuple(float,float)) : vec = (scale*x0, scale*y0)
+    """
+    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    if scale==None:
+        return vec0
+    else:
+        com.ensure(isinstance(scale, (float,int)),
+                   f'scale={scale} must be a number!')
+        return vec0[0]*scale, vec0[1]*scale 
+
+##=====
+## ヘルパー関数： 座表と座表変換
+##=====
+
+def isBoxOrPoint(box):
+    """与えられたオブジェクトboxが，点または矩形かどうかを返す．
+
+    Args: 
+
+         box (tuple) : オブジェクト
+
+    Returns: 
+
+         (bool) : boxが，点または矩形ならばTrue, それ以外ならばFalse. 
+    """
+    if box==None:
+        return False
+    elif com.is_sequence_type(box, elemtype=(float,int)): 
+        if (len(box) == 2) or (len(box) == 4):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+def isProperPoint(box):
+    """与えられたオブジェクトboxが，点かどうかを返す．
+
+    Args: 
+
+         box (tuple) : オブジェクト
+    Returns: 
+
+         (bool) : boxが，点ならばTrue, それ以外ならばFalse. 
+    """
+    if not isBoxOrPoint(box):
+        return False
+    elif len(box)!=2:
+        return False
+    else:
+        return True
+
+def isProperBox(box):
+    """与えられたオブジェクトboxが，正しい矩形かをTrue, Falseで返す．
+
+    Args: 
+         box (tuple) : オブジェクト
+
+    Returns: 
+         (bool) : boxが，4座標（矩形）からなる正しい矩形ならばTrue, それ以外ならばFalse. 
+    """
+    if not isBoxOrPoint(box):
+        return False
+    elif len(box)!=4:
+        return False
+    else:
+        x0, y0, x1, y1 = box
+        if x1 >= x0 and y1 >= y0:
+            return True
+        else:
+            return False
+
+def box_normalize(box):
+    """4座標（矩形）からなる正しい矩形であることを検査し，2座標（点）なら4座標に正規化する．
+    """
+    com.ensure(isBoxOrPoint(box), f'box must be of TypeBoundingBox: type(box)={ type(box) }')
+    if len(box)==2:
+        box = (box[0], box[1], box[0], box[1])
+    com.ensure(isProperBox(box), f'box must a properbox: box={box}')
+    return box
+
+def box_shape(box):
+    """矩形 box = (x0, y0, x1, y1)を受け取り，その幅widthと高さheightを返す．
+    """
+    x0, y0, x1, y1 = box_normalize(box)
+    width, height = x1 - x0, y1 - y0
+    return width, height
+
+#長方形の和（最小包含矩形）
+def box_union(boxes, box1, verbose=False):
+    """矩形の対を受け取り，それらの最小包含長方形を表す対を返す．
+
+    Args: 
+    	 boxes, box1 : 点 (x0, y0) または矩形 (x0, y0, x1, y1)
+
+    Returns: 
+	 rect: 矩形 box = [p, q]
+"""
+    com.ensure(boxes != None, f'box_union: boxes must be non-None!')
+    if box1 == None:
+        return boxes 
+    else: 
+        boxes = box_normalize(boxes)
+        box1 = box_normalize(box1)
+        x0 = min(boxes[0], box1[0])
+        y0 = min(boxes[1], box1[1])
+        x1 = max(boxes[2], box1[2])
+        y1 = max(boxes[3], box1[3])
+        return (x0, y0, x1, y1)
+
+#=====
+# アンカー処理
+#=====
+
+def _anchor_str_normalize(anchor_str=None, default=None):
+    """アンカー記述（アンカー文字列，または，その対）を受け取り，アンカー文字列対を返す．値が`None`ならば，デフォールト値を返す．
+    """
+    if anchor_str==None:
+        anchor_str = com.ensure_defined(value=default,
+                                        default=ANCHOR_STR_ORIGIN)
+    elif isinstance(anchor_str, str):
+        anchor_str = (anchor_str, anchor_str)
+    elif com.is_sequence_type(anchor_str, elemtype=(str), length=2):
+        pass 
+    else:
+        com.panic(f'anchor_str={anchor_str} must be either str or (str,str)!')
+    return anchor_str
+
+def _anchor_str_to_normal_value(adict=None, key=None):
+    """アンカー値の辞書`adict`とアンカー文字列`key`を受け取り，対応する正規化アンカー値`aval in [0,1]`を返す．
+    """
+    if key!=None and key in adict:
+        return adict[key]
+    else:
+        return DEFAULT_ANCHOR_VALUE
+
+def anchor_vector(anchor_str=None, default=None):
+    """文字列対によるアンカー表記を受け取り，対応する正規化アンカーベクトル`a = (ax,ay) in [0,1]^2`を返す．
+
+    Args:
+         anchor_str (str, tuple(str,str)) : 文字列対によるアンカー表記．それ自体が`None`でも良いし，対の片方または両方の要素が`None`を取っても良い．
+
+         default (tuple(str,str)) : アンカー表記のデフォールト値．`anchor_str==None`のとき，代わりに用いられる．
+
+    Note: 
+
+        アンカー表記の対の要素に`None`を許す．
+
+        * アンカー表記自身が`None`のときは，値としてDEFAULT_ANCHOR_STRをとる．現在は，`ANCHOR_STR_ORIGIN = ('left','top')`である．
+
+        * 対の要素が`None`のときは，値`None`を，`mid`に相当する値`DEFAULT_ANCHOR_VALUE = 0.5`に置き換える．
+
+    Example::
+
+            anchor=('left' , 'top') => (0.0, 0.0)
+            anchor=('mid'  , 'mid') => (0.5, 0.5)
+            anchor=('right', 'bot') => (1.0, 1.0)
+            anchor=('left' ,  None) => (0.0, 0.5)
+            anchor=(None   , 'top') => (0.5, 0.0)
+    """
+    str_pair = _anchor_str_normalize(anchor_str=anchor_str,
+                                     default=default)
+    ax = _anchor_str_to_normal_value(adict=ANCHOR_X, key=str_pair[0])
+    ay = _anchor_str_to_normal_value(adict=ANCHOR_X, key=str_pair[1])
+    return (ax, ay)
+
+def anchor_point_by_vector(box=None, vect=None):
+    """矩形`box`において，正規化アンカーベクトル`vect`が表すアンカー点を返す．
+
+    Args: 
+         vect (tuple(float, float)) : 正規化アンカー位置`vect=(ax,ay) in [0,1]^2`
+
+    Returns: 
+         (tuple(float, float)) : 包含矩形box上の点 a = (ax, ay)
+    """
+    #boxの準備
+    com.ensure(box != None and isProperBox(box),
+               f'box={box} must be a box!')
+    com.ensure(vect != None and isProperPoint(vect),
+               f'vect={vect} must be a pair of numbers')
+    x0, y0, x1, y1 = box_normalize(box) 
+    # compute x-anchor 
+    if x1 - x0 == 0:
+        ax = x0
+    else:
+        ax = x0 * (1.0 - vect[0]) + x1 * (vect[0])            
+    # compute y-anchor 
+    if y1 - y0 == 0:
+        ay = y0
+    else:
+        ay = y0 * (1.0 - vect[1]) + y1 * (vect[1])
+    return ax, ay
 
 #==========
 # 便利関数
@@ -262,8 +513,6 @@ class ImageBoard:
          cr (cairo.Context) : Cairoの文脈オブジェクト．関数`context()`で取得し，各種のCairoの描画操作，または，crtoolの描画操作を適用できる．
 
     """
-    count = 0  #count instance id 
-    
     def __init__(self,
                  # dep_init=None, 
                  imgtype=cairo.FORMAT_ARGB32, #cairoのSurface format
@@ -970,106 +1219,6 @@ def cr_draw_marker(ax, ay, r=None, context=None, **kwargs):
     """関数cr_draw_marker_circleのラッパー関数．下位互換性のため．"""
     return cr_draw_marker_circle(ax, ay, r=r, context=context, **kwargs)
 
-##=====
-## ヘルパー関数： 座表と座表変換
-##=====
-
-def isBoxOrPoint(box):
-    """与えられたオブジェクトboxが，点または矩形かどうかを返す．
-
-    Args: 
-
-         box (tuple) : オブジェクト
-
-    Returns: 
-
-         (bool) : boxが，点または矩形ならばTrue, それ以外ならばFalse. 
-    """
-    if box==None:
-        return False
-    elif com.is_sequence_type(box, elemtype=(float,int)): 
-        if (len(box) == 2) or (len(box) == 4):
-            return True
-        else:
-            return False
-    else:
-        return False
-
-def isProperPoint(box):
-    """与えられたオブジェクトboxが，点かどうかを返す．
-
-    Args: 
-
-         box (tuple) : オブジェクト
-    Returns: 
-
-         (bool) : boxが，点ならばTrue, それ以外ならばFalse. 
-    """
-    if not isBoxOrPoint(box):
-        return False
-    elif len(box)!=2:
-        return False
-    else:
-        return True
-
-def isProperBox(box):
-    """与えられたオブジェクトboxが，正しい矩形かをTrue, Falseで返す．
-
-    Args: 
-         box (tuple) : オブジェクト
-
-    Returns: 
-         (bool) : boxが，4座標（矩形）からなる正しい矩形ならばTrue, それ以外ならばFalse. 
-    """
-    if not isBoxOrPoint(box):
-        return False
-    elif len(box)!=4:
-        return False
-    else:
-        x0, y0, x1, y1 = box
-        if x1 >= x0 and y1 >= y0:
-            return True
-        else:
-            return False
-
-def box_normalize(box):
-    """4座標（矩形）からなる正しい矩形であることを検査し，2座標（点）なら4座標に正規化する．
-    """
-    com.ensure(isBoxOrPoint(box), f'box must be of TypeBoundingBox: type(box)={ type(box) }')
-    if len(box)==2:
-        box = (box[0], box[1], box[0], box[1])
-    com.ensure(isProperBox(box), f'box must a properbox: box={box}')
-    return box
-
-def box_shape(box):
-    """矩形 box = (x0, y0, x1, y1)を受け取り，その幅widthと高さheightを返す．
-    """
-    x0, y0, x1, y1 = box_normalize(box)
-    width, height = x1 - x0, y1 - y0
-    return width, height
-
-#長方形の和（最小包含矩形）
-def box_union(boxes, box1, verbose=False):
-    """矩形の対を受け取り，それらの最小包含長方形を表す対を返す．
-
-    Args: 
-    	 boxes, box1 : 点 (x0, y0) または矩形 (x0, y0, x1, y1)
-
-    Returns: 
-	 rect: 矩形 box = [p, q]
-"""
-    com.ensure(boxes != None, f'box_union: boxes must be non-None!')
-    if box1 == None:
-        return boxes 
-    else: 
-        boxes = box_normalize(boxes)
-        box1 = box_normalize(box1)
-        x0 = min(boxes[0], box1[0])
-        y0 = min(boxes[1], box1[1])
-        x1 = max(boxes[2], box1[2])
-        y1 = max(boxes[3], box1[3])
-        return (x0, y0, x1, y1)
-
 ##======
 ## 配置：ボード位置の微調整
 ##======
@@ -1116,9 +1265,9 @@ class Translate(GeoTransform):
     """並行移動の変換のクラス．次の引数 destかsourceのどちらか一つを指定する．
 
     Args: 
-         dest (tuple(num,num)) : 原点を移す先の点の座標
+         dest (tuple(float,float)) : 原点を移す先の点の座標
 
-         source (tuple(num,num)) : 点原点に移す元の点（アンカー）
+         source (tuple(float,float)) : 点原点に移す元の点（アンカー）
 
     	 x (float) : x方向の移動量. obsolute 
     
@@ -1138,9 +1287,9 @@ class Translate(GeoTransform):
 
         ## 点source を点 destへ移す並行移動 trans: (0,0) maps to (x,y) を求める．
         com.ensure(isProperPoint(source), 
-                   f'source={source} must have type (num, num)!')
+                   f'source={source} must have type tuple(float,float)!')
         com.ensure(isProperPoint(dest), 
-                   f'dest={dest} must have type (num, num)!')
+                   f'dest={dest} must have type tuple(float,float)!')
         self.x, self.y = dest[0] - source[0], dest[1] - source[1]
         return
 
@@ -1267,162 +1416,6 @@ def cr_apply_trans(trans=None, context=None, verbose=False):
             panic(f'trans must be of GeoTransform!: trans={ trans }')
         return
 
-#=====
-#変換関数
-#=====
-
-def get_default_anchor(anchor=None):
-    com.ensure(anchor != None, f'anchor==None!')
-    anchor_x, anchor_y = 0.0, 0.0 
-    if isinstance(anchor, str):
-        if anchor in ANCHOR_X: anchor_x = anchor
-        if anchor in ANCHOR_Y: anchor_y = anchor
-    elif com.is_sequence_type(anchor, str): 
-        if len(anchor) == 1:
-            if anchor in ANCHOR_X: anchor_x = anchor
-            if anchor in ANCHOR_Y: anchor_y = anchor
-        elif len(anchor) == 2:
-            if anchor[0] in ANCHOR_X: anchor_x = anchor[0]
-            if anchor[1] in ANCHOR_Y: anchor_y = anchor[1]
-        else:
-            panic(f'get_align: anchor={anchor} must have length<=2!')
-    else:
-        panic(f'get_align: no such anchor={anchor}!')
-    return anchor_x, anchor_y
-
-def get_point_by_anchor(box=None, anchor=None, verbose=False):
-    """アンカーキーワードから，矩形box上のアンカー点src in R^2を求める．
-    
-    Args: 
-         box (tuple(num,num)) : 矩形 box = (x0, x1, y0, y1)
-
-         anchor (tuple(str,str)) : x方向とy方向のアンカー指示. 
-
-    Returns: 
-         (tuple(float, float)) : 包含矩形box上のアンカー位置の点 pos = (x, y)
-    """
-    com.ensure(box != None and isProperBox(box),
-               f'box={box} must be a box!')
-    com.ensure(anchor!=None,
-               f'anchor={anchor} is None!')
-    _ratio = get_anchor_ratio(anchor=anchor, verbose=verbose)
-    src = get_point_by_anchor_ratio(box, ratio=_ratio, verbose=verbose)
-    com.ensure(src != None and isProperPoint(src),
-               f'src={src} must be a point!')
-    return src 
-
-
-def get_anchor_ratio(anchor=None, verbose=False):
-    """アンカーキーワードの対 anchor = (anchor_x, anchor_y)から，比率対 ratio = (ratio_x, ratio_y) in [0,1]^2を返す．
-
-    Args: 
-         anchor (tuple(str,str)) : x方向とy方向のアンカー指示. 
-
-    Returns: 
-         (tuple(float, float)) : 矩形[0,1]x[0,1]における正規化されたアンカー位置(anchor_x, anchor_y) in [0,1]x[0,1]
-    """
-    com.ensure(com.is_sequence_type(anchor, elemtype=(str),
-                                length=2), 
-               f'anchor={anchor} must be a pair of numbers!')
-    ratio_x, ratio_y = None, None
-    
-    ## アンカーキーからアンカー比率へ変換
-    if anchor[0] in ANCHOR_X:
-        ratio_x = ANCHOR_X[anchor[0]]
-    if anchor[1] in ANCHOR_Y:
-        ratio_y = ANCHOR_Y[anchor[1]]
-    return ratio_x, ratio_y
-
-def get_point_by_anchor_ratio(box, ratio=None, verbose=False):
-    """矩形とアンカー表示を受け取り，矩形上のアンカー点の座標を返す．
-
-    Args: 
-         ratio (tuple(float, float)) : 正規化アンカー位置 in [0,1]x[0,1]
-
-    Returns: 
-         (tuple(float, float)) : 包含矩形box上のアンカー位置の点 (x, y)
-    """
-    #boxの準備
-    com.ensure(box != None and isProperBox(box),
-               f'get_point_by_anchor_ratio: box={box} must be a box!')
-    com.ensure(ratio != None and isProperPoint(ratio),
-               f'get_point_by_anchor_ratio: ratio={ratio} must be a pair of numbers')
-    x0, y0, x1, y1 = box_normalize(box) 
-    # compute x-anchor 
-    if x1 - x0 == 0: x = x0
-    else: x = x0 * (1.0 - ratio[0]) + x1 * (ratio[0])            
-    # compute y-anchor 
-    if y1 - y0 == 0: y = y0
-    else: y = y0 * (1.0 - ratio[1]) + y1 * (ratio[1])
-    if verbose:
-        print(f'@debug: get_anchor_by_ratio: ratio={ratio} '+
-              f'=> anchor_coordinates={x,y}')
-    return x, y
-
-#===========
-# vector 
-#===========
-def vt_add(vec0, vec1):
-    """二つのベクトルvec0, vec1の成分和のベクトル`vec0 + vec1`を返す．
-    
-    Args: 
-         vec0 (tuple(num,num)) : vec0 = (x0, y0)
-
-         vec1 (tuple(num,num)) : vec1 = (x1, y1)
-
-    Returns: 
-         (tuple(num,num)) : vec = (x0+x1, y0+y1)
-    """
-    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
-    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
-    return vec0[0]+vec1[0], vec0[1]+vec1[1]
-
-def vt_sub(vec0, vec1):
-    """二つのベクトルvec0, vec1の成分差のベクトル`vec0 - vec1`を返す．
-    
-    Args: 
-         vec0 (tuple(num,num)) : vec0 = (x0, y0)
-
-         vec1 (tuple(num,num)) : vec1 = (x1, y1)
-
-    Returns: 
-         (tuple(num,num)) : vec = (x0-x1, y0-y1)
-    """
-    return vt_add(vec0, vt_scale(vec1, scale=(-1.0)))
-
-def vt_mult(vec0, vec1):
-    """二つのベクトルvec0, vec1の成分ごと積のベクトル`vec0 * vec1`を返す．
-    
-    Args: 
-         vec0 (tuple(num,num)) : vec0 = (x0, y0)
-
-         vec1 (tuple(num,num)) : vec1 = (x1, y1)
-
-    Returns: 
-         (tuple(num,num)) : vec = (x0*x1, y0*y1)
-    """
-    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
-    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
-    return vec0[0]*vec1[0], vec0[1]*vec1[1]
-
-def vt_scale(vec0, scale=None):
-    """ベクトルvec0とスカラーscaleの積のベクトル`scale * vec0`を返す．
-    
-    Args: 
-         vec0 (tuple(num,num)) : ベクトル vec0 = (x0, y0)
-
-         scale (num) : スカラー
-
-    Returns: 
-         (tuple(num,num)) : vec = (scale*x0, scale*y0)
-    """
-    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
-    if scale==None:
-        return vec0
-    else:
-        com.ensure(isinstance(scale, (float,int)),
-                   f'scale={scale} must be a number!')
-        return vec0[0]*scale, vec0[1]*scale 
 
 
 ##EOF

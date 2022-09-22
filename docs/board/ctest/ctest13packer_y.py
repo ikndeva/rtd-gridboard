@@ -129,13 +129,13 @@ if __name__ == '__main__':
     if not opt.anchor_y: opt.anchor_y = 'top'
 
     VStack = DrawingPanel.put(trans=crt.Translate(dest=(0,0)),
-                              child=bd.PackerBoard(align='y',
+                              child=bd.PackerBoard(orient='y',
                                                    margin=hspan/2, 
                                                    ))
     
     oid = 0
     for i in range(vnum): #行
-        Row = VStack.add(child=bd.PackerBoard(align='x',
+        Row = VStack.add(child=bd.PackerBoard(orient='x',
                                               margin=hspan/4, 
                                               pack_anchor_x=opt.anchor_x,
                                               pack_anchor_y=opt.anchor_y, 

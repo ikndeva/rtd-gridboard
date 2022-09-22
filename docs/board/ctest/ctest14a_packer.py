@@ -39,9 +39,15 @@ def reading_args_and_options():
     # ## options: main 
     # ap.add_argument('-l', '--maxlen', type=int,
     #                 help='specify maximum length of messages')
-    ## align 
-    ap.add_argument('-a', '--align', type=str, 
-                    help='set align to str')
+    ## orient 
+    ap.add_argument('-o', '--orient', type=str, 
+                    help='set orient to str')
+    ## boundingbox
+    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
+                    help='show verbose messages')
+    ## margin 
+    ap.add_argument('-m', '--margin', type=float, 
+                    help='set margin to float in [0,1]')
     ## pack 
     ap.add_argument('-p', '--pack', action='store_true', default=False, 
                     help='show verbose messages')
@@ -51,9 +57,6 @@ def reading_args_and_options():
     ## anchor 
     ap.add_argument('-y', '--anchor_y', type=str, 
                     help='set anchor_y to str')
-    ## boundingbox
-    ap.add_argument('-b', '--boundingbox', action='store_true', default=False, 
-                    help='show verbose messages')
     ## verbose 
     ap.add_argument('-v', '--verbose', action='store_true', default=False, 
                     help='show verbose messages')
@@ -102,13 +105,27 @@ if __name__ == '__main__':
 
     cr.set_line_width(line_width)
 
+    # 格子点に図形をおく
+    if opt.margin: 
+        m_ratio = opt.margin
+    else:
+        m_ratio = 1.0 
     #====== テスト ==============================
     # cboard.Board の構成実験
     LEAF_LIST = [] #オブジェクト木の葉の集合
     
-    ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
-    DrawingPanel = CV.put(trans=crt.Translate(dest=(dskip,dskip)),
-                          child=bd.Board(tags='DrawingPanel'))
+    #描画領域オブジェクトA．余白(x=dskip, y=dskip)
+    # DrawingPanel = CV.put(trans=crt.Translate(dest=(dskip,dskip)),
+    #                       child=bd.Board(tags='DrawingPanel'))
+
+    # exp:
+    # WrapperBoardを介した内部のBoardとの対話をうまく設計する必要がある．
+    # 設計案：
+    # - 一種のGhost/Phantomにするか？
+    # - 外側の矩形（親に対する）と内側の矩形（子に対する）の役割分担を設計すること．
+    DrawingPanel = bd.Board(tags='DrawingPanel')
+    MW = bd.MarginWrapper(DrawingPanel, margin=hspan*m_ratio)
+    _DrawingPanel = CV.put(child=MW)
     
     #====== Markerのテスト ==============================
     # 格子点にマーカーを置く
@@ -129,17 +146,17 @@ if __name__ == '__main__':
                                 )
     
     #===== 図形のテスト ==============================
-    # 格子点に図形をおく
     ## row
-    if not opt.align: opt.align = 'y'
-    if opt.align in ('x'): align_outer, align_inner = 'y', 'x'
-    else: align_outer, align_inner = 'x', 'y'
+    if not opt.orient: opt.orient = 'y'
+    if opt.orient in ('x'): orient_outer, orient_inner = 'y', 'x'
+    else: orient_outer, orient_inner = 'x', 'y'
 
     VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
-                              child=bd.PackerBoard(align=align_outer,
+                              child=bd.PackerBoard(orient=orient_outer,
                                                    pack=False,
                                                    #cell_margin=0, 
-                                                   cell_margin=(hspan/2,hspan/2), 
+                                                   # cell_margin=(hspan/2,hspan/2), 
+                                                   cell_margin=(hspan*m_ratio,hspan*m_ratio), 
                                                    ))
     
     oid = 0

@@ -279,7 +279,7 @@ class Loggable:
             
         #ログ
         if self.verbose: self.repo(msg=f'=> added: {self.myinfo()}.put(): trans={trans} child={ child } with vars={ child.vars() }...')
-        return #Do not change!
+        return child #Do not change!
 
     # exp 基本：子を追加する
     def set_child_by_idx(self, idx=None, pair=None): 
