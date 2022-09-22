@@ -93,12 +93,12 @@ if __name__ == '__main__':
     LEAF_LIST = [] #オブジェクト木の葉の集合
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
-    A = bd.Board().addTag('A').addTag('panel')
+    A = bd.Board().add_tag('A').add_tag('panel')
     CV.put(trans=crt.Translate(x=dskip, y=dskip), child=A)
 
     #A = 
     CV.put(child=bd.DrawRectangle(x=0, y=0, width=hsize, height=vsize,
-                                  rgb=crt.MYCOL['red']).addTag('A1').addTag('rect'))
+                                  rgb=crt.MYCOL['red']).add_tag('A1').add_tag('rect'))
 
     ## 折れ線オブジェクト
     PL = bd.DrawPolyLines(line_width=0.5,

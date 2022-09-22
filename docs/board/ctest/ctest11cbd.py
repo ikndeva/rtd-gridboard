@@ -93,7 +93,7 @@ if __name__ == '__main__':
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     DrawingPanel = bd.Board(tags='DrawingPanel')
-    # DrawingPanel = bd.Board().addTag('DrawingPanel')
+    # DrawingPanel = bd.Board().add_tag('DrawingPanel')
     CV.put(trans=crt.Translate(x=dskip, y=dskip), child=DrawingPanel)
     
     ## row

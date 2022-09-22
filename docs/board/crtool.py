@@ -62,8 +62,9 @@ Attributes:
   
 """
 import sys
-import cairo 
 import math 
+from typing import Any, NoReturn
+import cairo 
 
 import common as com 
 import kwargs as kw
@@ -579,11 +580,11 @@ class ImageBoard:
           MemoryError in case of no memory
         """
         if self.format == "png": 
-            self.ims = cairo.ImageSurface(cairo.FORMAT_ARGB32,
+            self.img_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                           self.display_shape[0],
                                           self.display_shape[1]) #image surface
         elif self.format == "pdf": 
-            self.ims = cairo.PDFSurface(self.myoutfile,
+            self.img_surface = cairo.PDFSurface(self.myoutfile,
                                         self.display_shape[0],
                                         self.display_shape[1]) #image surface
         else:
@@ -595,10 +596,10 @@ class ImageBoard:
         Returns:	a newly allocated Context
         Raises :	MemoryError in case of no memory
         """
-        self.cr = cairo.Context(self.ims) 
+        self.cr = cairo.Context(self.img_surface) 
         return 
                 
-    def context(self):
+    def context(self) -> 'cairo.Context':
         """描画ハンドル`self.cr`を返す．
 
         Returns: 
@@ -624,7 +625,7 @@ class ImageBoard:
             print(f'@printing an image to "{ self.myoutfile }"...')
         
         if self.format=="png":
-            self.ims.write_to_png(self.myoutfile)
+            self.img_surface.write_to_png(self.myoutfile)
         elif self.format=="pdf":
             self.cr.show_page()
         else:
@@ -1077,7 +1078,7 @@ def cr_arc(x=None, y=None, r=None, start=None, end=None,
     box = ((x - r, y - r), (x + r, y + r))
     return box
 
-def cr_circle(x, y, r, context=None, **kwargs):
+def cr_circle(x=None, y=None, r=None, context=None, **kwargs):
     """円盤を描く
 
     Args: 
@@ -1094,6 +1095,8 @@ def cr_circle(x, y, r, context=None, **kwargs):
 
          (Rect) : 包含矩形
     """
+    com.ensure(x!=None and y!=None and r!=None,
+               f'x={x}!=None and y={y}!=None and r={r}!=None!')
     context.new_sub_path() #for beginning with arc(). See pycairo manual
     box = cr_arc(x, y, r, math.pi*0, math.pi*2.0, context=context, **kwargs)
     return box
@@ -1229,7 +1232,7 @@ class GeoTransform():
     def __init__(self):
         return
 
-    def apply_context(context=None, verbose=False):
+    def apply_context(context=None, verbose=False) -> NoReturn:
         """変換をCairoの文脈contextに適用する．オーバーライドすること．
 
         Args: 
@@ -1240,7 +1243,7 @@ class GeoTransform():
         return 
 
     ##Override
-    def apply_point(self, x, y):
+    def apply_point(self, x:float, y:float) -> tuple:
         """変換を点(x, y)に適用した結果(x1, y1)を返す．オーバーライドすること．
 
         Args: 
@@ -1290,7 +1293,8 @@ class Translate(GeoTransform):
                    f'source={source} must have type tuple(float,float)!')
         com.ensure(isProperPoint(dest), 
                    f'dest={dest} must have type tuple(float,float)!')
-        self.x, self.y = dest[0] - source[0], dest[1] - source[1]
+        self.x : float = dest[0] - source[0] 
+        self.y : float = dest[1] - source[1]
         return
 
     def __str__(self):
@@ -1308,7 +1312,7 @@ class Translate(GeoTransform):
         return 
 
     ##Override
-    def apply_point(self, x, y):
+    def apply_point(self, x:float, y:float) -> tuple:
         """変換を点(x, y)に適用した結果(x1, y1)を返す．
 
         Args: 
@@ -1335,7 +1339,7 @@ class Rotate(GeoTransform):
         com.ensure(angle!=None and isinstance(angle, (float,int)), 
                    f'angle={angle} must be non-None!')
         com.ensure(isProperPoint((x, y)), f'p={ x, y } must be pair of float')
-        self.angle = angle
+        self.angle : float = angle
         return
 
     def __str__(self):
@@ -1354,7 +1358,7 @@ class Rotate(GeoTransform):
         return 
 
     ##Override
-    def apply_point(self, x, y):
+    def apply_point(self, x:float, y:float) -> tuple:
         """変換を点(x, y)に適用した結果(x1, y1)を返す．
 
         Args: 

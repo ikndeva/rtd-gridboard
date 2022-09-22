@@ -141,7 +141,9 @@ class BoardBase(log.Loggable):
 
              * `draw_me_after(self, cr)`: Cairoの文脈オブジェクト`cr`を受け取り，子の描画の後に，自身を描画する手続きを定義する．
     """
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 anchor=None,
+                 **kwargs):
         """画盤オブジェクトを初期化する
         """
         #引数
@@ -149,9 +151,10 @@ class BoardBase(log.Loggable):
         super().__init__(**kwargs)
         
         #内部変数
+        self.anchor = self._init_anchor(anchor_str=anchor)
         
         ##自身の配置情報
-        self.trans = None #自身の変換
+        self.trans : crt.GeoTransform = None #自身の変換
         self.box   = None #自身の包含矩形.
         self.boxes = None #子全体の包含矩形.
         
@@ -163,7 +166,18 @@ class BoardBase(log.Loggable):
     # 雑関数
     #=====
 
-    def get_box(self):
+    def _init_anchor(self, anchor_str=None):
+        """アンカー文字列指定`anchor_str`を受け取り，格納する．"""
+        #アンカーのデフォールト設定
+        _anchor = crt.anchor_vector(anchor_str=anchor_str)
+        # if anchor_str==None:
+        #     print(f'@debug: BoardBase: {self.myinfo()}.__init__(): anchor_str=={anchor_str}! => _anchor={_anchor}')
+        com.ensure((_anchor != None and
+                    crt.isProperPoint(_anchor)),
+                   f'_anchor={None} must be a point!')
+        return _anchor 
+
+    def get_box(self) -> 'tuple(float,float,float,float)':
         """保持する自身の包含矩形を返す．
 
         Returns: 
@@ -174,7 +188,7 @@ class BoardBase(log.Loggable):
                    f'get_box: box={_box} must be isProperBox')
         return _box
 
-    def get_trans(self):
+    def get_trans(self) -> crt.GeoTransform:
         """保持する変換を返す．
 
         Returns: 
@@ -186,6 +200,26 @@ class BoardBase(log.Loggable):
                    f'get_trans: trans={_trans} must be a GeoTrans')
         return _trans 
 
+    
+    def get_anchor(self) -> 'tuple(float,float)':
+        """自身の包含矩形上のアンカー点（配置の原点）を返す．ここに，各種の配置関数`_arrange()`は，アンカー点を原点として図形を配置する．
+
+        Attributes: 
+self.anchor (tuple(float,float)) : 正規化アンカーベクトル `a = (ax,ay) in [0,1]^2`
+
+        Returns: 
+             (tuple(float, float)) : 2次元平面上のアンカー点 `b = (bx,by) in R^2`
+        """
+        com.ensure((self.anchor != None and
+                    crt.isProperPoint(self.anchor)),
+                   f'self.anchor={None} must be a point!')
+        apos = crt.anchor_point_by_vector(box=self.box,
+                                           vect=self.anchor)
+        com.ensure(apos != None and isProperPoint(apos),
+                   f'apos={apos} must be a pair of numbers')
+        return apos
+
+    
     # exp 基本：配置の計算
     def _arrange(self):
         """配置を計算する．配置は，ボトムアップに再帰的に計算される．
@@ -218,7 +252,7 @@ class BoardBase(log.Loggable):
         """
         for idx, pair in self.children_enumerated():
             trans, child = pair_normalize(pair)
-            if self.verbose: self.repo(msg=f'=> call _arrange() on {idx}-th child={child.myinfo()}', isChild=True, header=False)
+            if self.verbose: self.repo(msg=f'=> call _arrange() on {idx}-th child={child.myinfo()}', is_child=True, header=False)
             
             child._arrange() #再帰的に子の配置を実行
             
@@ -251,7 +285,7 @@ class BoardBase(log.Loggable):
         com.ensure(crt.isProperBox(self.boxes),
                    f'self.boxes={self.boxes} must be a box!')
         if self.verbose:
-            self.repo(msg=f'{self.myinfo()}._arrange()=> box={ self.boxes }', isChild=True)
+            self.repo(msg=f'{self.myinfo()}._arrange()=> box={ self.boxes }', is_child=True)
         return 
         
     #To be Override
@@ -299,7 +333,7 @@ class BoardBase(log.Loggable):
              pm0 (pim.ImageBoard) : 基本描画のプリミティブボード
         """
         if self.verbose:
-            self.repo(isChild=True, msg=f'{self.myinfo()}._draw(): { self.vars() }')
+            self.repo(is_child=True, msg=f'{self.myinfo()}._draw(): { self.vars() }')
             
         ## 自分の空間を開く
         cr.save()  ##self
@@ -345,7 +379,7 @@ class BoardBase(log.Loggable):
         Note: 
             文脈オブジェクトに，配置情報を元に直接書き込みを行う．
         """
-        if self.verbose: self.repo(isChild=True,
+        if self.verbose: self.repo(is_child=True,
                                    msg=f'{self.myinfo()}.draw_me_before()...')
         ## ここでcontext crに何か描く．
         return 
@@ -360,7 +394,7 @@ class BoardBase(log.Loggable):
         Note: 
             文脈オブジェクトに，配置情報を元に直接書き込みを行う．
         """
-        if self.verbose: self.repo(isChild=True,
+        if self.verbose: self.repo(is_child=True,
                                    msg=f'{self.myinfo()}.draw_me_before()...')
         ## ここでcontext crに何か描く．
         return
@@ -427,317 +461,18 @@ class BoardBase(log.Loggable):
         fmargin = 0.25*fsize
         msg = self.myinfo()
         x, y, width, height, dx, dy = crt.cr_text_extent(tx, ty, msg=msg, context=cr)
-        crt.cr_text(tx + fmargin, ty + 1.0*dy + fmargin, msg=msg, fsize=fsize, 
-                    context=cr)
+        crt.cr_text(tx + fmargin, ty + 1.0*dy + fmargin,
+                    msg=msg, fsize=fsize, context=cr)
         return 
 
-    #==========
-    # 座標系
-    #==========
-    # def get_anchor_point(self, anchor=None):
-    #     """アンカー指定から，自身の包含矩形上の対応する点を返す．
-
-    #     Args: 
-    #          anchor (tuple(str,str)) : x方向とy方向の位置指示
-
-    #     Returns: 
-    #          (tuple(float, float)) : アンカー点 point = (x,y)
-    #     """
-    #     ## exp: アンカー情報を用いて，変換transを求める
-        
-    #     # アンカーキーワードから，アンカー比率を返す．
-    #     ratio = crt.get_anchor_ratio(anchor=anchor)
-    #     com.ensure(self.get_box() != None, f'self.box is None!')
-    #     point = crt.anchor_point_by_vector(self.box, ratio=ratio)
-    #     com.ensure(isProperPoint(point),
-    #                f'point={point} must be a pair of numbers')
-    #     return point 
-
-
-    # #==========
-    # # 外部アクセス: exp
-    # #==========
-    # def relative_apath_get(self, top=None, cid=None, apath=None, hgt=0):
-    #     """基準オブジェクトから自身へのアクセスパス（子添字列）を返す．
-    #     Args: 
-    #       top (BoardBase) : 基準オブジェクト．このBoardBaseか根へ到達すると停止する．
-    #     Returns: 
-    #       (list(int)) : 成功すれば，基準オブジェクトから自身へのアクセスパス（子添字列）．失敗すればNone
-    #     Note: 
-    #       仮定：self.depth==Noneの場合は，全ての子孫のdepth==None
-    #     """
-    #     com.ensure(top!=None, f'top must not be None!')
-    #     if apath==None:
-    #         apath=[]
-    #     apath.append((self, cid))
-    #     pa = self.parent
-    #     if self==top: 
-    #         apath.reverse() #return None
-    #         return apath
-    #     elif pa==None or (not isinstance(pa, BoardBase)):
-    #         return None 
-    #     else:
-    #         return pa.relative_apath_get(top=top, cid=self.ord_, apath=apath, 
-    #                                   hgt=hgt+1)
-    
-    # def relative_apath_to_tpath(self, apath=None, tpath=None,
-    #                             verbose=False):
-    #     """点p=(x,y)を，アクセスパスapath=((), ..., ())
-
-    #     Args: 
-    #          p (tuple) : 点p=(x,y) or 矩形p=(x0, y0, x1, y1)
-
-    #          apath (list) : (ord, board)のリスト．最初の要素はord=None
-    #     """
-    #     if verbose: print(f'debug: call apath={apath} \t tpath={tpath}')
-    #     if tpath==None:
-    #         tpath=[]
-            
-    #     if apath==None or len(apath)==0: 
-    #         return tpath
-        
-    #     node, ord = apath[0]
-    #     com.ensure(isinstance(node, BoardBase), f'node must be of BoardBase type!')
-    #     if ord==None:
-    #         if verbose: print(f'\tdebug: last element!')
-    #         return tpath
-    #     elif not (ord < len(node.children_)):
-    #         com.panic(f'ord={ord} is out of range!:'+
-    #                   f' num children={ len(node.children_) }')
-    #     else: 
-    #         trans, child = node.children_[ord]
-    #         tpath.append(trans)
-    #         if verbose:
-    #             print(f'\tdebug: visit { (node.myinfo(), ord) } => { trans } tpath={tpath}')
-    #         apath1 = apath[1:]
-    #         return child.relative_apath_to_tpath(apath=apath1, tpath=tpath, verbose=verbose)
-    
-    # def relative_apply_transform_by_apath(self, p=None, apath=None,
-    #                                       verbose=False):
-    #     """点p=(x,y)を，アクセスパスapath=((), ..., ())
-
-    #     Args: 
-    #          p (tuple) : 点p=(x,y) or 矩形p=(x0, y0, x1, y1)
-
-    #          apath (list) : (ord, board)のリスト．最初の要素はord=None
-    #     """
-    #     if len(apath)==0:
-    #         com.panic(f'- empty list; It must not reach!')
-    #     else:
-    #         x, ord = apath[0]
-    #         com.ensure(isinstance(x, BoardBase), f'x must be of BoardBase type!')
-    #         com.ensure(self==x, f'condition self==apath[0][0] must hold!')
-    #         if verbose:
-    #             print(f'\tdebug: relative_transform_point_by_apath: p={ p }\tapath[0]={ (x, ord) }')
-    #         if ord==None:
-    #             if verbose: print(f'- last element; return p={ p }!')
-    #             return p
-    #         elif not (ord < len(x.children_)):
-    #             com.panic(f'ord={ord} is out of range!:'+
-    #                       f' num children={ len(x.children_) }')
-    #         else: 
-    #             trans, child = x.children_[ord]
-    #             if crt.isBoxOrPoint(p):
-    #                 if (len(p) == 2):
-    #                     p1 = trans.apply_point(p[0], p[1])
-    #                     # p1 = crt.apply_trans_point(p, trans=trans)
-    #                 elif (len(p) == 4):
-    #                     p1 = crt.box_apply_trans(p, trans=trans)
-    #                     # p1 = crt.box_apply_trans(p, trans=trans)
-    #                 else:
-    #                     panic(f'p={p} must be either a point or a box!')
-    #             apath1 = apath[1:]
-    #             return child.relative_apply_transform_by_apath(p1, apath1, verbose=verbose)
-   
-    # def relative_transform(self, p=None, target=None, verbose=False):
-    #     """自身の子孫であるBoardBaseオブジェクトtargetの座標系における，
-    #     点p=(x,y)の局所座標を返す，
-
-    #     Args: 
-    #          target (BoardBase) : 自身の子孫であるBoardBaseオブジェクト
-
-    #          p (tuple) : 点p=(x,y)
-
-    #     Notes: 
-    #       apath (list) は，selfからtargetへのアクセスパスであり，
-    #       (board, ord)のリスト．
-    #       - 末尾以外の要素boardについて，その子はboard.chidren_[ord]であり，
-    #       - 末尾要素boardに対してはord=Noneである．
-    #     """
-    #     apath = target.relative_apath_get(top=self)
-    #     if verbose: 
-    #         self.repo(msg=f'relative_transform_point: apath={ [ (obj, ord) for obj, ord in apath ] }')
-    #     return self.relative_apply_transform_by_apath(p=p, apath=apath,
-    #                                                   verbose=verbose)
-    
     pass ## end class BoardBase 
 
-#=====
-# ボードの実装クラス
-#=====
-class AnchorBoard(BoardBase):
-    """アンカー情報を保持する画盤オブジェクトのクラス．BoardBaseのラッパー．
-
-    Args: 
-         anchor (str, tuple(str, str)) : x方向とy方向の原点位置指示. 
-
-         **kwargs : 他のキーワード引数．上位クラスに渡される．
-
-    Attributes: 
-        anchor_ (tuple(float,float)) : 正規化されたアンカー点 `(ax, ay) in [0,1]^2`
-
-    Notes: 引数のアンカー文字列対 anchor = (sx, sy)は次の値をとる
-    
-         sx (str) : 横方向の位置指示 in (left, middle, right)
-
-         sy (str) : 縦方向の位置指示 in (top, middle, bottom, above, below)
-
-    """
-    def __init__(self,
-                 anchor=None,
-                 **kwargs):
-        #引数
-        super().__init__(**kwargs)
-        
-        #アンカーのデフォールト設定
-        self.anchor_ = crt.anchor_vector(anchor_str=anchor)
-        if anchor==None:
-            print(f'@debug: AnchorBoard: {self.myinfo()}.__init__(): anchor=={anchor}! => self.anchor_={self.anchor_}')
-        com.ensure(self.anchor_ != None and crt.isProperPoint(self.anchor_),
-                   f'self.anchor_={None} must be a point!')
-
-        #内部変数
-        
-        if self.verbose:
-            self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
-        return
-
-    def get_anchor(self):
-        """自身の包含矩形上のアンカー点（配置の原点）を返す．ここに，各種の配置関数`_arrange()`は，アンカー点を原点として図形を配置する．
-
-        Returns: 
-             (tuple(float, float)) : 2次元平面上のアンカー点 anc = (ax,ay) 
-        """
-        com.ensure(self.anchor_ != None and crt.isProperPoint(self.anchor_),
-                   f'self.anchor_={None} must be a point!')
-        apos = crt.anchor_point_by_vector(box=self.box,
-                                           vect=self.anchor_)
-        com.ensure(apos != None and isProperPoint(apos),
-                   f'apos={apos} must be a pair of numbers')
-        return apos
-    
-    pass ##class AnchorBoard
-        
-# #=====
-# # ボードの実装クラス
-# #=====
-# class AnchorBoard(BoardBase):
-#     """画盤オブジェクトのクラス．BoardBaseのラッパー．
-
-#     Args: 
-#          anchor (tuple(str, str)) : x方向とy方向の原点位置指示. 
-
-#          **kwargs : 他のキーワード引数．上位クラスに渡される．
-
-#     Notes: anchor = (anchor_x, anchor_y)は次の値をとる
-    
-#          anchor_x (str) : 横方向の位置指示 in (left, middle, right)
-
-#          anchor_y (str) : 縦方向の位置指示 in (top, middle, bottom, above, below)
-
-#     """
-    
-#     # def __init__(self, anchor_x=None, anchor_y=None, anchor=None, **kwargs):
-#     def __init__(self,
-#                  anchor=None,
-#                  margin=None, 
-#                  **kwargs):
-#         #引数
-#         super().__init__(**kwargs)
-        
-#         #アンカーのデフォールト設定
-#         self.anchor = anchor_str_normalize(anchor=anchor, default=('left','top'))
-
-#         #マージンのデフォールト設定
-#         self.margin = None 
-#         if margin!=None: 
-#             self.margin = numpair_normalize(margin=margin, default=(0,0))
-#             com.ensure(crt.isProperPoint(self.margin),
-#                    f'self.margin={self.margin} must be a pair of numbers')
-#             if True: print(f'@debug2: AnchorBoard.__init__(): margin={margin}, self.margin={self.margin}; vars={self.vars()}')
-
-#         #内部変数
-        
-#         if self.verbose:
-#             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
-#         return
-
-
-#     def _box_margined(self, box=None, margin=None):
-#         """矩形boxの外周にmargin幅の余白を加えた矩形box0と，内側の矩形boxの原点(left, top)に対応するアンカー点を返す．
-#         """
-#         if margin==None:
-#             box0 = box
-#             dest0 = (0,0)
-#             return box0, dest0
-#         else: 
-#             com.ensure(crt.isProperPoint(margin),
-#                        f'{self.myinfo()}: margin={margin} must be a pair of numbers: , vars={self.vars()}')
-#             if True: print(f'@debug3: _box_margined(): margin={margin}')
-#             #親の矩形を求める
-#             _shape = crt.box_shape(box)
-#             _shape = _shape[0] + 2.0*margin[0], _shape[1] + 2.0*margin[1]
-#             box0 = 0.0, 0.0, _shape[0], _shape[1]
-#             com.ensure(crt.isProperBox(box0), f'_shape={box0} must be a box!')
-#             #親の矩形上の原点から余白分内側のアンカー点destを求める．
-#             dest0 = crt.get_point_by_anchor(box0, anchor=crt.ANCHOR_ORIGIN)
-#             dest0 = dest0[0] + margin[0], dest0[1] + margin[1]
-#             return box0, dest0
-
-#     #To be Override
-#     def arrange_box_self(self):
-#         """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
-#         次の属性を操作する: 
-
-#         * self.boxes  : 読み出し
-#         * self.box    : 書き込み
-#         * self.trans  : 書き込み
-
-#         crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
-#         """
-#         _trans, _box = None, None #変数
-
-#         #子の矩形を求める
-#         com.ensure(self.boxes != None, f'self.boxes={self.boxes} is None!')
-#         _box1 = self.boxes #子（たち）の包含矩形
-#         #子の矩形上のアンカー点_srcを求める．
-#         _src = crt.get_point_by_anchor(_box1, anchor=crt.ANCHOR_ORIGIN)
-
-#         #親の矩形を求める
-#         ## 内側の矩形_box1の外周に幅self.marginの余白をとった外側の矩形_boxと，対応する内側の矩形の原点 _dest = (left, top)を返す．
-#         if True: print(f'@debug4:{self.myinfo()}: AnchorBoard.arrange_box_self(): self.margin={self.margin}, vars={self.vars()}')
-        
-#         _box, _dest = self._box_margined(box= _box1, margin=self.margin)
-
-#         # _box, _dest = AnchorBoard._box_margined(box= _box1, margin=self.margin)
-
-#         # 子のアンカー点_srcを目的地_destに写す変換_transを求める．
-#         _trans = crt.Translate(source=_src, dest=_dest) ##新しい変換
-#         self.trans = _trans
-
-#         ##新しい変換で包含矩形を変換する
-#         self.box = _box
-        
-#         if True: print(f'@debug:arrange_self_transform:{self.myinfo()}: anchor={self.anchor} => src={_src} trans={self.get_trans()}: box0={_box1} => box={_box}')
-#         return 
-
-#     pass ##class AnchorBoard
         
 #=====
 # ボードのインタフェースのクラス
 #=====
 #old: class Board(AnchorBoard):
-class CoreBoard(AnchorBoard):
+class CoreBoard(BoardBase):
     """描画を行う画盤（board）のクラス．具体的な子の配置方法は持たず，サブクラスで実装される．`WrapperBoard`とは比較不能（兄弟）な継承関係をもつ．
 
     Args: 
@@ -755,93 +490,6 @@ class CoreBoard(AnchorBoard):
 #=====
 # ラッパーのクラス
 #=====
-# class WrapperBoard(BoardBase):
-#     """ラッパーのクラス．唯一の子をもち，
-#     自身が持たないメソッド呼び出しを子に転送する．
-
-#     Args: 
-#           child (BoardBase) : 子として保持するBoardBaseオブジェクト．
-
-#           **kwargs : 他のキーワード引数．上位クラスに渡される．
-
-#     Attributes: 
-#         verbose (bool): ログ出力のフラグ
-#     """
-#     # def __init__(self, child=None, **kwargs):
-#     def __init__(self, child=None,
-#                  margin=None,
-#                  **kwargs):
-#         """画盤オブジェクトを初期化する
-#         """
-#         #引数
-#         #親Loggableの初期化
-#         super().__init__(max_children=1, #Can have at most one child
-#                          **kwargs)
-
-#         ##マージン
-#         self.margin = margin
-        
-#         ## 包み込む唯一の子を設定する
-#         com.ensure(child != None, f'child must be to None!')
-#         child.parent = None ##使用済みの子から親への参照を切る．破壊的代入．        
-#         self.put(trans=None, child=child)   #子に追加
-
-#         ## メソッド転送設定
-#         self.the_child = child  #転送先オブジェクト
-#         #内部変数
-#         if self.verbose:
-#             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
-#         return
-
-#     def get_the_child(self):
-#         _child = self.the_child
-#         com.ensure(isinstance(_child, BoardBase),
-#                    'child must be a subclass of BoardBase!: {_child}')
-#         return _child 
-
-#     # Override exp 基本：配置の計算
-#     def arrange_box_self(self):
-#         """アンカー情報から，変換と包含矩形を計算する．子孫クラスでオーバーライドする．
-#         次の属性を操作する: 
-
-#         * self.boxes  : 読み出し
-#         * self.box    : 書き込み
-#         * self.trans  : 書き込み
-
-#         crt.ANCHOR_ORIGINは，左上原点のアンカー指定(left,top)
-#         """
-#         child_box = self.get_the_child().get_box()
-#         x0, y0, x1, y1 = child_box
-
-#         #変換を求める
-#         mx, my = numpair_normalize(margin=self.margin)
-#         _self_box = x0 - mx, y0 - my, x1 + mx, y1 + my
-#         xx0, yy0, xx1, yy1 = _self_box
-#         ## 
-#         dst = 0.0, 0.0
-#         src = xx0, yy0
-#         moves = crt.vt_sub(dst, src)  #moves = dst - src
-			
-# 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-#         self.trans = crt.Translate(dest=moves)
-#         self.box = crt.box_apply_trans(_self_box, trans=self.trans)
-#         return self.box 
-    
-#     #=====
-#     ## メソッド転送
-#     #=====
-#     def __getattr__(self, name):
-#         """メソッドが未定義のとき，呼び出される特殊関数．
-# 		未定義の属性呼び出しのときも呼ばれるので注意．
-#         """
-#         if self.verbose:
-#             print(f'\t@WrapperBoard: method="__getattr__" is called')
-#         return bc.BackupCaller(self.the_child, name, verbose=True)
-
-#     #=====
-#     # 子のリスト
-#     #=====
-#     pass #class WrapperBoard
 
 class WrapperBoard(BoardBase):
     """ラッパーのクラス．描画は行わず，唯一の子の位置パラメータ決めのみを行う．自身が持たないメソッド呼び出しを，唯一の子に転送する．
@@ -872,13 +520,13 @@ class WrapperBoard(BoardBase):
         self.append(pair=(None, child))   #子に追加
 
         ## メソッド転送設定
-        self.the_child = child  #転送先オブジェクト
+        self.the_child : BoardBase = child  #転送先オブジェクト
         #内部変数
         if self.verbose:
             self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
         return
 
-    def get_the_child(self):
+    def get_the_child(self) -> BoardBase:
         _child = self.the_child
         com.ensure(isinstance(_child, BoardBase),
                    'child must be a subclass of BoardBase!: {_child}')
@@ -932,7 +580,7 @@ class MarginWrapper(WrapperBoard):
                          **kwargs)
 
         ##マージン
-        self.margin = margin
+        self.margin : tuple = margin
         
         #内部変数
         if self.verbose:
@@ -963,8 +611,8 @@ class MarginWrapper(WrapperBoard):
         moves = crt.vt_sub(dst, src)  #moves = dst - src
 			
 		#自身の包含矩形とアンカーを，左上を原点にそろえて，正規化する．
-        self.trans = crt.Translate(dest=moves)
-        self.box = crt.box_apply_trans(_self_box, trans=self.trans)
+        self.trans : crt.GeoTransform  = crt.Translate(dest=moves)
+        self.box : tuple  = crt.box_apply_trans(_self_box, trans=self.trans)
         return self.box 
     
     pass #class MarginWrapper 
@@ -974,7 +622,7 @@ class MarginWrapper(WrapperBoard):
 #=====
 
 ## TODO:PlaceBoard
-class Board(CoreBoard):
+class PlaceBoard(CoreBoard):
     """画盤（board）のクラス: 座標系オブジェクト
 
     Args: 
@@ -1000,7 +648,7 @@ class Board(CoreBoard):
         return
 
     # exp 基本：子を追加する
-    def put(self, child=None, trans=None): 
+    def put(self, child=None, trans=None) -> BoardBase: 
         """子を追加する．
 
         Args: 
@@ -1030,11 +678,30 @@ class Board(CoreBoard):
         
         return child #Do not change!
     
+#=====
+# ボードのインタフェースのクラス
+#=====
+#old: class Board(AnchorBoard):
+class Board(PlaceBoard):
+    """描画を行う画盤（board）のクラス．`PackerBoard`のラッパー．
+
+    Args: 
+          **kwargs : 他のキーワード引数．上位クラスに渡される．
+    """
+    def __init__(self, **kwargs):
+        """画盤オブジェクトを初期化する
+        """
+        #引数
+        super().__init__(**kwargs)
+        if self.verbose:
+            self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
+        return
+
 #======
 #基盤画像系: exp 
 #======
-#class Canvas(Board):
-class Canvas(Board):
+# class Canvas(Board):
+class Canvas(PlaceBoard):
     """トップレベルのボードのクラス．描画のためのCairoのSurfaceを保持する．
     描画対象のすべての要素（ボード）は，本オブジェクトの子孫として保持する．
 
@@ -1063,7 +730,7 @@ class Canvas(Board):
                  format="pdf",   #出力ファイルフォーマット（拡張子 pdf, png）
                  outfile="out",  #出力ファイル名（拡張子を除く）
                  imagesize='XGA',#初期の画像サイズ
-                 portrait=None, #画像サイズが縦長か？
+                 portrait=False, #画像サイズが縦長か？
                  ## for debugging
                  boundingbox=False, #デバッグ用: 包含矩形のデバッグ出力をする
                  max_perturb=None,  #デバッグ用: 
@@ -1080,12 +747,12 @@ class Canvas(Board):
         self.imagesize = imagesize
         self.portrait  = portrait
         self.boundingbox = boundingbox #fetchで子孫からアクセス
-        self.max_perturb = max_perturb #fetchで子孫からアクセス
+        self.max_perturb : float = max_perturb #fetchで子孫からアクセス
         # self.show_origin = show_origin #fetchで子孫からアクセス
         verbose = kw.get(kwargs, key='verbose', default=False)
 
         ##属性
-        self.im    = None   #基礎画像オブジェクト．遅延生成
+        self.im  = None   #基礎画像オブジェクト．遅延生成
         self.display_shape = None
         # self.verbose = verbose 
         
@@ -1115,7 +782,7 @@ class Canvas(Board):
     # 基底描画系の生成
     #=====
 
-    def canvas_size(self):
+    def canvas_size(self) -> 'tuple(int, int)':
         return self.display_shape
 
     # 基本：画像を表示する
@@ -1145,7 +812,7 @@ class Canvas(Board):
         return
 
     #Cairo.contextオブジェクトの返却
-    def context(self): 
+    def context(self) -> 'cairo.Context': 
         """Cairo.contextオブジェクトを返す．"""
         return self.im.context()  ##Cairo.contextオブジェクト
             
@@ -1159,7 +826,7 @@ class Canvas(Board):
 # ボードの実装クラス
 #=====
 
-# class PackerBoard(AnchorBoard):
+# class PackerBoard(BoardBase):
 class PackerBoard(CoreBoard):
     """画盤（board）のクラス．Boardのサブクラス
 
@@ -1187,13 +854,13 @@ class PackerBoard(CoreBoard):
         
         #内部変数
         ## マージン設定
-        self.packing = packing 
-        self.cell_margin  = cell_margin
+        self.packing : str = packing 
+        self.cell_margin : tuple  = cell_margin
         
         #内部変数
-        self.orient = orient
-        self.width = width
-        self.height= height
+        self.orient : str = orient
+        self.width : float = width
+        self.height: float = height
         
         
         #debug
@@ -1203,7 +870,7 @@ class PackerBoard(CoreBoard):
 
     
     # exp 基本：子を追加する
-    def add(self, child=None): 
+    def add(self, child:BoardBase=None) -> BoardBase: 
         """子を追加する．関数`BoardBase.put(child, trans=None)`へのラッパー関数．
 
         Args: 
@@ -1252,7 +919,7 @@ class PackerBoard(CoreBoard):
 
     # 基本：子画盤の並びを返す
     ##Override
-    def children_box_enumerated(self):
+    def children_box_enumerated(self) -> 'iterator':
         """添字とエントリの対`idx, triple`の並び children を返す．
         現在は，`triple`は，三つ組`trans, child, child_box`である．必要なら部分クラスで上書きする．
 
@@ -1389,6 +1056,24 @@ class PackerBoard(CoreBoard):
     pass ##class PackerBoard
         
 
+#=====
+# サブクラス
+#=====
+class GridPackerBoard(PackerBoard):
+    """描画を行う画盤（board）のクラス．`PackerBoard`のラッパー．
+
+    Args: 
+          **kwargs : 他のキーワード引数．上位クラスに渡される．
+    """
+    def __init__(self, **kwargs):
+        """画盤オブジェクトを初期化する
+        """
+        #引数
+        super().__init__(**kwargs)
+        if self.verbose:
+            self.repo(msg=f'{self.myinfo()}.__init__(): { self.vars() }')
+        return
+
 ##======
 ## 描画演算オブジェクト
 ##======
@@ -1402,7 +1087,9 @@ class DrawCommandBase(CoreBoard):
          **kwargs (dict) : 上位コマンドに渡すオプション引数．
 
     Attributes: 
-         cmd (str) : 命令の名前の文字列．default=None. 
+        cmd (str) : 命令の名前の文字列．default=None. 
+
+        kwargs (dict) : コマンドの引数からなる辞書．各コマンドは，この辞書の項目を参照して実装する．
     """
     def __init__(self,
                  cmd=None, #命令の名前
@@ -1416,7 +1103,7 @@ class DrawCommandBase(CoreBoard):
         com.ensure(type(cmd) is str, f'cmd={cmd} must be str!')
 
         #命令を格納する
-        self.cmd     = cmd 
+        self.cmd :str = cmd 
         # self.kwargs  = kwargs  #exp
         return
 
@@ -1424,7 +1111,7 @@ class DrawCommandBase(CoreBoard):
     #Override 
     def draw_me_before(self, cr):
         if self.verbose:
-            self.repo(isChild=True, msg=f'{self.myinfo()}.draw_me_before(): { self.vars() }')
+            self.repo(is_child=True, msg=f'{self.myinfo()}.draw_me_before(): { self.vars() }')
         kwargs1 = kw.extract(kwargs=self.kwargs, keys=['x', 'y', 'width', 'height', 'fill', 'source_rgb', 'edge_rgb', 'line_width'])
         self.draw_me_impl(cr)
         return 
@@ -1435,17 +1122,17 @@ class DrawCommandBase(CoreBoard):
         """
         return 
         
-    #Override 
-    def get_kwargs(self):
-        return self.kwargs
-    pass
+    # #Override 
+    # def get_kwargs(self):
+    #     return self.kwargs
+    # pass
 
-class DrawCommandTemplate(DrawCommandBase):
-    """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
-    """
-    def __init__(self, cmd=None, **kwargs):
-        super().__init__(cmd=cmd, **kwargs)
-        return 
+# class DrawCommandTemplate(DrawCommandBase):
+#     """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+#     """
+#     def __init__(self, cmd=None, **kwargs):
+#         super().__init__(cmd=cmd, **kwargs)
+#         return 
 
 #======
 # 単一図形描画
@@ -1461,25 +1148,27 @@ class DrawRectangle(DrawCommandBase):
 
           **kwargs (dict) : 上位コマンドに渡すオプション引数．
     """
-    def __init__(self, **kwargs):
-        kwargs['x'] = kw.get(kwargs, 'x', default=0.0)
-        kwargs['y'] = kw.get(kwargs, 'y', default=0.0)        
+    def __init__(self, x=0.0, y=0.0, width=None, height=None, **kwargs):
+        self.x = com.ensure_defined(value=x, required=True)
+        self.y = com.ensure_defined(value=y, required=True)
+        self.width : float = com.ensure_defined(value=width, required=True)
+        self.height: float = com.ensure_defined(value=height, required=True)
         super().__init__(cmd='rectangle', **kwargs)
         return 
 
     #Override 
     def arrange_box_self(self):
-        x = kw.get(self.kwargs, 'x', required=True)
-        y = kw.get(self.kwargs, 'y', required=True)
-        width = kw.get(self.kwargs, 'width', required=True)
-        height = kw.get(self.kwargs, 'height', required=True)
+        x, y = self.x, self.y
+        width, height = self.width, self.height
         self.box = (x, y, x+width, y+height)
         return 
-        # return box 
         
     #Override 
     def draw_me_impl(self, cr):
-        crt.cr_rectangle(context=cr, **self.kwargs)
+        crt.cr_rectangle(x=self.x, y=self.y,
+                         width=self.width, height=self.height, 
+                         context=cr,
+                         **self.kwargs)
         if kw.get(self.kwargs, 'debug', default=False): 
             crt.cr_text(context=cr, ox=0, oy=0,
                         msg=f'{self.get_trans()}', fsize=CFSIZE) #debug
@@ -1503,24 +1192,30 @@ class DrawCircle(DrawCommandBase):
 
           **kwargs (dict) : 上位コマンドに渡すオプション引数．
     """
-    def __init__(self, **kwargs):
-        kwargs['x'] = kw.get(kwargs, 'x', default=0.0)
-        kwargs['y'] = kw.get(kwargs, 'y', default=0.0)
+    def __init__(self,
+                 x=0.0, 
+                 y=0.0,
+                 r=None, 
+                 **kwargs):
+        self.x : float = x
+        self.y : float = y
+        self.r : float = r
+        com.ensure(self.r != None, f'r={r} is None!')
         super().__init__(cmd='circle', **kwargs)
         return 
 
     #Override 
     def arrange_box_self(self):
-        x = kw.get(self.kwargs, 'x', required=True)
-        y = kw.get(self.kwargs, 'y', required=True)
-        r = kw.get(self.kwargs, 'r', required=True)
+        x = self.x
+        y = self.y
+        r = self.r
         self.box = (x-r, y-r, x+r, y+r)
         return 
         
     #Override 
     def draw_me_impl(self, cr):
-        # Note: self.kwargs contains keys 'x', 'y', 'r'. 
-        crt.cr_circle(context=cr, **self.kwargs) 
+        crt.cr_circle(x=self.x, y=self.y, r=self.r, context=cr,
+                      **self.kwargs) 
         if kw.get(self.kwargs, 'debug', default=False): 
             crt.cr_text(context=cr, ox=0, oy=0,
                         msg=f'{self.get_trans()}', fsize=CFSIZE)#debug
@@ -1531,6 +1226,47 @@ class DrawCircle(DrawCommandBase):
                                      linewidth=0.5, angle=math.pi*0.0, 
                                      rgb=crt.cr_add_alpha(crt.MYCOL['blue'], alpha=0.5))
         return 
+
+# class DrawCircle(DrawCommandBase):
+#     """描画演算オブジェクトのクラス．DrawCommandBaseクラスのサブクラス．
+
+#     Args: 
+#           x (float) : 円の中心位置のx座標．default=0.0. 
+
+#           y (float) : 円の中心位置のy座標．default=0.0. 
+
+#           r (float) : 円の半径．必須．
+
+#           **kwargs (dict) : 上位コマンドに渡すオプション引数．
+#     """
+#     def __init__(self, **kwargs):
+#         kwargs['x'] = kw.get(kwargs, 'x', default=0.0)
+#         kwargs['y'] = kw.get(kwargs, 'y', default=0.0)
+#         super().__init__(cmd='circle', **kwargs)
+#         return 
+
+#     #Override 
+#     def arrange_box_self(self):
+#         x = kw.get(self.kwargs, 'x', required=True)
+#         y = kw.get(self.kwargs, 'y', required=True)
+#         r = kw.get(self.kwargs, 'r', required=True)
+#         self.box = (x-r, y-r, x+r, y+r)
+#         return 
+        
+#     #Override 
+#     def draw_me_impl(self, cr):
+#         # Note: self.kwargs contains keys 'x', 'y', 'r'. 
+#         crt.cr_circle(context=cr, **self.kwargs) 
+#         if kw.get(self.kwargs, 'debug', default=False): 
+#             crt.cr_text(context=cr, ox=0, oy=0,
+#                         msg=f'{self.get_trans()}', fsize=CFSIZE)#debug
+#             crt.cr_text(context=cr, ox=0, oy=2*CFSIZE, fsize=CFSIZE,
+#                         msg=f'box_={ self.box }') #debug
+#         if kw.get(self.kwargs, 'show_native_origin', default=False): 
+#             crt.cr_draw_marker_cross(context=cr, x=0, y=0, 
+#                                      linewidth=0.5, angle=math.pi*0.0, 
+#                                      rgb=crt.cr_add_alpha(crt.MYCOL['blue'], alpha=0.5))
+#         return 
 
 
 #======
@@ -1559,14 +1295,14 @@ class DrawPolyLines(DrawCommandBase):
     
     def __init__(self, **kwargs):
         super().__init__(cmd='polylines', **kwargs)
-        self.CMDS = []
+        self.commands = []
         return 
 
     #Override 
     def arrange_box_self(self):
         #命令全ての包含長方形を計算する
         _boxes = EMPTY_RECT
-        for idx, pair in enumerate(self.CMDS):
+        for idx, pair in enumerate(self.commands):
             cmd, x, y, _ = pair #分解
             _boxes = crt.box_union(_boxes, (x, y))
         self.boxes = self.box = _boxes
@@ -1577,18 +1313,18 @@ class DrawPolyLines(DrawCommandBase):
     def draw_me_impl(self, cr):
         crt.cr_set_context_parameters(context=cr, **self.kwargs)
         x_last, y_last = None, None 
-        for idx, pair in enumerate(self.CMDS):
+        for idx, pair in enumerate(self.commands):
             cmd, x, y, has_arrow = pair #分解
             if cmd==CMD_MOVE:
                 if self.verbose:
                     kwargs={ 'x':x, 'y': y, }
-                    self.repo(isChild=True, msg=f'@debug: cr_move_to: { kwargs }')
+                    self.repo(is_child=True, msg=f'@debug: cr_move_to: { kwargs }')
                 crt.cr_move_to(x, y, context=cr)
             elif cmd==CMD_LINE:
                 if self.verbose:
                     kwargs={ 'x':x, 'y': y, 'has_arrow': has_arrow,
                              'x_last': x_last, 'y_last': y_last, }
-                    self.repo(isChild=True, msg=f'@debug: cr_line_to: { kwargs }')
+                    self.repo(is_child=True, msg=f'@debug: cr_line_to: { kwargs }')
                 if x_last != None and y_last != None: 
                     crt.cr_line_to(x, y, context=cr, 
                                    x_last=x_last, y_last=y_last,
@@ -1601,7 +1337,7 @@ class DrawPolyLines(DrawCommandBase):
         crt.cr_process_stroke_or_fill(context=cr, **self.kwargs)
         return
 
-    def move_to(self, x, y):
+    def move_to(self, x, y) -> BoardBase:
         """ペンを位置`(x,y)`に移動する．直線は引かない．
         Args: 
 
@@ -1613,10 +1349,10 @@ class DrawPolyLines(DrawCommandBase):
               (Board) : 自分自身．いわゆる'cascade object call interface' のため．
         """
         has_arrow = False
-        self.CMDS.append((CMD_MOVE, x, y, has_arrow))
+        self.commands.append((CMD_MOVE, x, y, has_arrow))
         return self #for cascade object interface 
     
-    def line_to(self, x, y, has_arrow=False):
+    def line_to(self, x, y, has_arrow=False) -> BoardBase:
         """ペンを現在位置から目標位置`(x,y)`まで移動して，直線を引く．
 
         Args: 
@@ -1629,7 +1365,7 @@ class DrawPolyLines(DrawCommandBase):
               (Board) : 自分自身．いわゆる'cascade object call interface' のため．
 
         """
-        self.CMDS.append((CMD_LINE, x, y, has_arrow)) 
+        self.commands.append((CMD_LINE, x, y, has_arrow)) 
         return self #for cascade object interface 
     
     pass 
@@ -1645,8 +1381,8 @@ class DrawMarkerCross(DrawPolyLines):
     def __init__(self, **kwargs):
         # kwargs['x'] = kw.get(kwargs, 'x', default=0.0)
         # kwargs['y'] = kw.get(kwargs, 'y', default=0.0)        
-        ticklen = kw.get(kwargs, 'ticklen', default=4.0)
-        linewidth = kw.get(kwargs, key='linewidth',
+        self.ticklen = ticklen = kw.get(kwargs, 'ticklen', default=4.0)
+        self.linewidth = linewidth = kw.get(kwargs, key='linewidth',
                            altkeys=['line_width', 'pen_width'], default=0.75)
         kwargs['linewidth'] = linewidth
         super().__init__(**kwargs)

@@ -9,11 +9,17 @@
 DO_COLORIZE= | ../colorize_trace.sh 
 DO_OPEN= && open out.pdf
 UBCMD=unbuffer
-OPT_BD=
+OPTB=
 TESTDIR=./ctest
+OFILE=out.pdf
 
 .py.test: 
-	$(UBCMD) python3 $*.py $(OPT_BD) $(DO_COLORIZE) $(DO_OPEN)
+	$(UBCMD) python3 $*.py $(OPTB) $(DO_COLORIZE) && mv out.pdf $(OFILE) && open $(OFILE)
+
+
+test:
+	make OPTB='-b -m 0.2' OFILE='out13.pdf' ctest/ctest13packer.test
+	make OPTB='-b' OFILE='out14.pdf' ctest/ctest14packer.test
 
 testall:
 	make $(TESTDIR)/ctest0.test

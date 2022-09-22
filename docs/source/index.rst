@@ -9,10 +9,17 @@ Under construction: Welcome to gridboard's documentation!
 Warning: This project has not been completed and still under construction.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 2  
    :caption: Contents:
 
    board
+
+Class hierarchy
+==================
+
+.. toctree::
+
+   classes 
 
 
 Indices and tables

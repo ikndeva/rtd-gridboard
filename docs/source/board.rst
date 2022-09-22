@@ -52,14 +52,6 @@ board.loggable module
    :undoc-members:
    :show-inheritance:
 
-board.path module
------------------
-
-.. automodule:: board.path
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

@@ -11,6 +11,7 @@
 	* ログ出力の管理
 """
 import sys
+from typing import Any, NoReturn
 import common as com
 import kwargs as kw
 
@@ -75,7 +76,7 @@ class Loggable:
 
            kwargs (dict) : オプション引数の辞書．オブジェクトの属性`kwargs`に保持されて，実装者と利用者により，各種の用途に用いることができる．
     """
-    _freeLID = 0 #loggable id (lid)
+    _freeLID : int = 0 #loggable id (lid)
     
     def __init__(self,
                  dep_init=0,
@@ -109,30 +110,30 @@ class Loggable:
         self.kwargs  = kwargs 
 		
         ## 内部変数
-        self.parent = None # 親オブジェクト
-        self.id = Loggable._freeLID;          
+        self.parent : Loggable = None # 親オブジェクト
+        self.id : int = Loggable._freeLID;          
         Loggable._freeLID += 1
 		
         ## 子供
         self.children_ = [] # 子のリスト
-        self.ord_   = None  # 子ID (親の子リスト中の自身の添字)．外部アクセスに必要．
+        self.ord_ = -1  # 子ID (親の子リスト中の自身の添字)．外部アクセスに必要．
         self.max_children_ = max_children # 子数の上限（>=0）．-1 means unbounded
 		
         #タグ
         if tags != None:
-            self.addTag(tags)
+            self.add_tag(tags)
         return 
 
     #=====
     # キーワード辞書
     #=====
-    def vars(self):
+    def vars(self) -> dict:
         """自身のオブジェクトの属性からなる辞書を返す．
         その際，未定義（値がNone）の属性はスキップする．
         """
         return kw.reduce(vars(self))
 	
-    def myinfo(self, depth=False, ord=False, tag=False):
+    def myinfo(self, depth=False, ord=False, tag=False) -> str:
         """便利関数．ログ用に，Boardオブジェクトの情報の文字列を返す．
           """
         bstr = self.__class__.__name__
@@ -148,7 +149,7 @@ class Loggable:
     # 親子関係
     #=====
 
-    def fetch(self, key=None, default=None, verbose=False):
+    def fetch(self, key=None, default=None, verbose=False) -> Any:
         """自分の先祖にフィールド`key`が定義されているボードがあれば，そのような直近の先祖での値を返す．もしそのような先祖がなければ，`default`が指定されていれば，その値を返し，それ以外ならば`None`を返す．
         
         Args: 
@@ -176,7 +177,7 @@ class Loggable:
             return val_
 
     #exp 親子関係の管理
-    def register_child(self, child=None): 
+    def _register_child(self, child=None): 
         """親子関係の管理．
         
         Args: 
@@ -195,10 +196,10 @@ class Loggable:
           
         ##親ボードを設定
         child.parent = self
-        Loggable.adjust_depth(self, child) # 深さ調整
+        Loggable._adjust_depth(self, child) # 深さ調整
         return 
 
-    def adjust_depth(parent=None, child=None, verbose=None):
+    def _adjust_depth(parent=None, child=None, verbose=None):
         """再帰的に，属性`depth`を調整し，自分と全ての子孫に正しく深さを設定する．
         
         Args: 
@@ -231,7 +232,7 @@ class Loggable:
             #すべての子に対して，再帰的に処理を行う
             for value in child.children():
                 _, child1 = value
-                Loggable.adjust_depth(parent=child, child=child1, verbose=verbose) 
+                Loggable._adjust_depth(parent=child, child=child1, verbose=verbose) 
         return
 
     #=====
@@ -239,7 +240,7 @@ class Loggable:
     #=====
 
     # exp 基本：子を追加する
-    def append(self, pair=None): 
+    def append(self, pair=None) -> 'Loggable': 
         """子ボードの対 pair (trans, child)を受け取り，子配列に追加する．
 
         * trans (cairo.Matrix) : 自座標における子の配置を指示する変換オブジェクト
@@ -268,7 +269,7 @@ class Loggable:
         com.ensure(child != None and isinstance(child, Loggable),
                    f'{self.myinfo()}.put(): child must be a Loggable!: {child}') 
         # 親子関係の管理
-        self.register_child(child)
+        self._register_child(child)
         
         # 子を追加する
         if self.max_children_ >= 0 and len(self.children_) >= self.max_children_:
@@ -282,7 +283,7 @@ class Loggable:
         return child #Do not change!
 
     # exp 基本：子を追加する
-    def set_child_by_idx(self, idx=None, pair=None): 
+    def set_child_by_idx(self, idx=None, pair=None) -> 'Loggable': 
         """添字 idx と変換と子ボードの対 pair (trans, child)を受け取り，
         子配列のidxセルにpairを代入する．
         添字は，下記の例のように元の配列から取り出したものに限る．
@@ -315,7 +316,7 @@ class Loggable:
                    f'{self.myinfo()}.put(): child must be a Loggable!: {child}') 
         # 親子関係の管理
         child.parent = None  #親への参照を来る
-        self.register_child(child)
+        self._register_child(child)
         
         # 子を追加する
         com.ensure(idx < len(self.children_), 
@@ -328,41 +329,9 @@ class Loggable:
         if self.verbose: self.repo(msg=f'overwrite =>{self.myinfo()}.set(): idx={idx} trans={trans} child={ child } with vars={ child.vars() }...')
         return child 
 
-     # # exp 基本：子を追加する
-     # def put_holder(self, holder=None): 
-     #      """子を追加する．
-          
-     #      Args: 
-     #           holder (LoggableHolder): 子として追加するクラスLoggableHolder（の部分クラス）のオブジェクト
-
-     #      Returns:
-     #           (LoggableHolder) : 追加した子ホルダー
-     #      """
-     #      #ホルダーの型チェック
-     #      com.ensure(holder != None and isinstance(holder, LoggableHolder))
-          
-     #      #子の管理
-     #      ## 型チェック
-     #      child = holder.get_child()
-     #      com.ensure(child != None and isinstance(child, Loggable),
-     #                 f'{self.myinfo()}.put(): child must be a Loggable!: {child}') 
-     #      ## 親子関係の管理
-     #      self.register_child(child)
-          
-     #      # 子ホルダを追加する
-     #      com.ensure(self.max_children_ >= 0 and len(self.children_) >= self.max_children_, 
-     #                 f'cannot add more than max_children_={self.max_children_}!')
-     #      child.ord_ = len(self.children_)      #子に自分の順位を設定する
-     #      self.children_.append(holder) #子リスト
-          
-     #      #
-     #      if self.verbose: self.repo(msg=f'=> added: {self.myinfo()}.put(): holder={holder} with vars={ child.vars() }...')
-          
-     #      return holder #Do not change!
-
     
     ##Override
-    def children(self):
+    def children(self) -> list:
         """子エントリの並び children を返す．ここに，子エントリvalue = (trans, child) は，変換 trans と子オブジェクトchildの対である．
           
         Returns: 
@@ -381,7 +350,7 @@ class Loggable:
         #     idx += 1
         
     ##Override
-    def children_enumerated(self):
+    def children_enumerated(self) -> list:
         """添字と子エントリの対`idx, value`の並び children を返す．
         現在は，`trans, child = value`である．部分クラスで上書きする．
 
@@ -397,7 +366,7 @@ class Loggable:
     #=====
     # タグ
     #=====
-    def getTags(self):
+    def get_tags(self) -> list:
         """タグ文字列のリストを返す．
 
         Returns:
@@ -405,7 +374,7 @@ class Loggable:
         """
         return self.tags
       
-    def addTag(self, tags):
+    def add_tag(self, tags) -> 'Loggable':
         """タグ文字列を追加する．
         Args: 
              tags (str) : タグ文字列．任意のグルーピングに用いる．
@@ -428,7 +397,7 @@ class Loggable:
     #=====
     # ログ出力
     #=====
-    def repo(self, msg=None, header=True, isChild=False, file=sys.stderr):
+    def repo(self, msg=None, header=True, is_child=False, file=sys.stderr):
         """入れ子深さを考慮したレポート文字列を出力する．
         
         Args: 
@@ -451,7 +420,7 @@ class Loggable:
             dep_ = self.depth
         else:
             dep_ = 0
-        if isChild:
+        if is_child:
             dep_ += 1
         if not (isinstance(dep_, int)):
             print(f'warning: common.py.repo: dep_={ dep_ } must be of int type!')     
@@ -474,8 +443,8 @@ class Loggable:
         print(f'{ "| "*dep }{ self.myinfo()}\t'+
               f' depth={ self.depth }'+f' ord_={ self.ord_ }'
               f' verbose={ self.verbose }', end='', file=file)
-        if self.getTags() != None: 
-            print(f' tags={self.getTags()}', end='', file=file)
+        if self.get_tags() != None: 
+            print(f' tags={self.get_tags()}', end='', file=file)
             print('', file=file)
         for idx, pair in self.children_enumerated():
             trans, child = pair #分解
@@ -485,25 +454,5 @@ class Loggable:
 
     pass 
 
-##=====
-## 表示
-##=====
-def dump_board(B, dep=0):
-    """Loggableオブジェクトの構造を印刷する．
-
-     Args: 
-          B (Loggable) : ボードオブジェクトの根
-     """
-    print(f'{ "| "*dep }{ B.myinfo()}\t'+
-          f' depth={ B.depth }'+f' ord_={ B.ord_ }'
-          f' verbose={ B.verbose }', end='')
-    if B.getTags() != None: 
-        print(f' tags={B.getTags()}', end='')
-        print('')
-    for idx, pair in B.children_enumerated():
-        trans, child = pair #分解
-        if isinstance(child, B):
-            dump_board(child, dep=dep+1)
-    return
 
 ## EOF

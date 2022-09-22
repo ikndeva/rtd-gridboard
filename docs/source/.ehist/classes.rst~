@@ -1,0 +1,31 @@
+.. gridboard documentation master file, created by
+   sphinx-quickstart on Mon Sep 19 05:01:39 2022.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Classes diagrams
+=============
+
+
+
+Module `loggable`
+---------------------------------
+
+.. figure:: classes_loggable.pdf 
+
+Module `cboard`
+---------------------------------
+
+.. figure:: classes_cboard.pdf
+
+Module `crtool`
+---------------------------------
+	    
+.. figure:: classes_crtool.pdf
+	    
+Module `cboard` 
+---------------------------------
+
+With attributes and methods. 
+
+.. figure:: classes_full.pdf

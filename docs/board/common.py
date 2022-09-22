@@ -225,7 +225,7 @@ def ensure_defined(value=None, default=None, required=False):
 		if required==False and default != None:
 			return default
 		else: 
-			panic('wrap_default: value={value} is required and default={default}!:')
+			panic('ensure_defined: value={value} is required and default={default}!:')
 	else:
 		return value 
           
