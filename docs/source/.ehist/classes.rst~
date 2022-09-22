@@ -18,12 +18,12 @@ Module `cboard`
 
 .. figure:: classes_cboard.pdf
 
-Module `crtool`
+Module `crtool` with members 
 ---------------------------------
 	    
 .. figure:: classes_crtool.pdf
 	    
-Module `cboard` 
+Module `cboard` with members 
 ---------------------------------
 
 With attributes and methods. 

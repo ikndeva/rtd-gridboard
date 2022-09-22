@@ -8,11 +8,6 @@ Classes diagrams
 
 
 
-Module `loggable`
----------------------------------
-
-.. figure:: classes_loggable.pdf 
-
 Module `cboard`
 ---------------------------------
 
@@ -29,3 +24,5 @@ Module `cboard` with members
 With attributes and methods. 
 
 .. figure:: classes_full.pdf
+
+
