@@ -103,7 +103,8 @@ if __name__ == '__main__':
         RowBoard = bd.Board(tags='RowBoard::Line')
         DrawingPanel.put(trans=crt.Translate(x=0, y=vspan*i), child=RowBoard)
         for j in range(hnum):
-            C = bd.AnchorBoard(anchor_x='center', anchor_y='mid')
+            C = bd.Board()
+            # C = bd.AnchorBoard(anchor_x='center', anchor_y='mid')
             RowBoard.put(trans=crt.Translate(x=hspan*j, y=0), child=C)
             rgb = COLS[oid % vnum ]
             if i % 2 == 0:

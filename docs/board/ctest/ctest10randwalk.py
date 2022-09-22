@@ -30,7 +30,7 @@ def reading_args_and_options():
     #                 help='sequence of numbers')
     ## options: 
     ## width 
-    ap.add_argument('-m', '--numpoints', type=int, default=1, 
+    ap.add_argument('-m', '--numpoints', type=int, default=100, 
                     help='set the number of points')
     ## noshow
     ap.add_argument('-n', '--noshow', action='store_true', default=False, 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     if opt.verbose:
         print(f'@debug: line: hnum, vnum { hnum, vnum  }: ')
     x, y = hsize*random.random(), vsize*random.random()
-    A.put(trans=crt.Translate(x, y), child=bd.DrawCircle(x=0, y=0, r=5, rgb=crt.MYCOL['magenta']))
+    A.put(trans=crt.Translate(x=x, y=y), child=bd.DrawCircle(x=0, y=0, r=5, rgb=crt.MYCOL['magenta']))
     PL.move_to(x, y)
     ncol = 0
     for i in range(opt.numpoints):

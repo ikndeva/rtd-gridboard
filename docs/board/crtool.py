@@ -1277,8 +1277,10 @@ class Translate(GeoTransform):
     	 y (float) : y方向の移動量. obsolute 
     
     """
-    def __init__(self, dest=None, source=None,
-                 x=None, y=None):
+    def __init__(self,
+                 x=None, y=None,
+                 dest=None, source=None,
+                 ):
         #正規化
         if x!=None and y!=None:
             dest = (x, y)
