@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     cr = CV.context()
     #cim = CV.get_image_board() ##ImageBoardオブジェクト
-    #cr = cim.context()
+    # cr = cim.context()
 
     #====== テスト ==============================
     dskip = 20

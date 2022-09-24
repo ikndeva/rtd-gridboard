@@ -21,19 +21,20 @@ test:
 	make OPTB='-b -m 0.2' OFILE='out13.pdf' ctest/ctest13packer.test
 	make OPTB='-b' OFILE='out14.pdf' ctest/ctest14packer.test
 
-testall:
-	make $(TESTDIR)/ctest0.test
-	make $(TESTDIR)/ctest1.test 
-	make $(TESTDIR)/ctest2.test
-	make $(TESTDIR)/ctest3.test
-	make $(TESTDIR)/ctest4.test
-	make $(TESTDIR)/ctest5colorchart.test
-	make $(TESTDIR)/ctest6colorchart.test
-	make $(TESTDIR)/ctest7cboard.test
-	make $(TESTDIR)/ctest8cbd.test
-	make $(TESTDIR)/ctest9cbdlines.test
-	make $(TESTDIR)/ctest10randwalk.test
-	make $(TESTDIR)/ctest11randwalk.test
+test.all:
+	make ctest/ctest7cboard.test
+	make ctest/ctest8cbd.test
+	make ctest/ctest9cbdlines.test
+	make ctest/ctest10randwalk.test
+	make ctest/ctest11cbd.test 
+	make ctest/ctest12anchor.test
+	make ctest/ctest13packer.test
+	make ctest/ctest13packer.test
+	make ctest/ctest14packer.test
+	make ctest/ctest14packer.test
+
+# test.list:
+# 	history | grep ctest | grep 'make' | cut -b8- | grep '^make' | grep -v 'cb\|-n' | sort -u
 
 ##
 color_chart: 

@@ -65,13 +65,11 @@ if __name__ == '__main__':
     # 位置指定による2D配置のテスト
     #画像枠の生成
     CV = bd.Canvas(outfile="out",
-                   imagesize='QVGA',
+                   # imagesize='QVGA',
                    boundingbox=opt.boundingbox, 
                    verbose=opt.verbose)
 
-    cr = CV.context()
-    #cim = CV.get_image_board() ##ImageBoardオブジェクト
-    #cr = cim.context()
+    # cr = CV.context()
 
     #====== テスト ==============================
     dskip = 20
@@ -83,7 +81,7 @@ if __name__ == '__main__':
     ow, oh = hspan*0.5, vspan*0.5
     COLS = list(crt.DARKCOL.values())
 
-    cr.set_line_width(line_width)
+    # cr.set_line_width(line_width)
 
     #====== テスト ==============================
     # cboard.Board の構成実験
@@ -153,38 +151,38 @@ if __name__ == '__main__':
     #============
     #描画: Marker 
     #============
-    #====== 描画領域 ==============================
-    cr.save()  #描画領域
     
+    # #====== 描画領域 ==============================
+    # cr.save()  #描画領域
 
-    #テキスト
-    x, y, width, height, dx, dy = crt.cr_text_extent(0, 0, msg="rectangles and cirles", context=cr)
-    crt.cr_text(0, dy, msg="Rectangles and cirles...", context=cr,
-                fontfamily='Times',
-                # fontfamily='Palatino',
-                )
+    # #テキスト
+    # x, y, width, height, dx, dy = crt.cr_text_extent(0, 0, msg="rectangles and cirles", context=cr)
+    # crt.cr_text(0, dy, msg="Rectangles and cirles...", context=cr,
+    #             fontfamily='Times',
+    #             # fontfamily='Palatino',
+    #             )
 
-    #描画領域
-    cr.translate(dskip, dskip)
+    # #描画領域
+    # cr.translate(dskip, dskip)
+
+    # cr.restore()  #描画領域
 
     
-    #===== 格子 =======
-    cr.save() ## 
-    for i in range(vnum): 
-        #============
-        cr.save() ## 
-        for j in range(hnum):
-            crt.cr_draw_marker(0, 0, r=2, context=cr,
-                                  ffamily="Sans", source_rgb=crt.MYCOL['grey25'])
-            cr.stroke()
-            cr.translate(hspan, 0) ##
-        cr.restore() ## 
-        #============
-        cr.translate(0, vspan) ##
-    cr.restore() ## 
-    #===== 格子 =======
-
-    cr.restore()  #描画領域
+    # #===== 格子 =======
+    # cr.save() ## 
+    # for i in range(vnum): 
+    #     #============
+    #     cr.save() ## 
+    #     for j in range(hnum):
+    #         crt.cr_draw_marker(0, 0, r=2, context=cr,
+    #                               ffamily="Sans", source_rgb=crt.MYCOL['grey25'])
+    #         cr.stroke()
+    #         cr.translate(hspan, 0) ##
+    #     cr.restore() ## 
+    #     #============
+    #     cr.translate(0, vspan) ##
+    # cr.restore() ## 
+    # #===== 格子 =======
 
     #============
     #印刷

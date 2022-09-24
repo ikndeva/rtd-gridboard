@@ -80,13 +80,13 @@ if __name__ == '__main__':
     #画像枠の生成
     CV = bd.Canvas(outfile="out",
                    #imagesize='QVGA',
-                   imagesize='VGA',
+                   # imagesize='VGA',
                    portrait=False,
                    boundingbox=opt.boundingbox,
                    # max_perturb=bd.DEFAULT_LINE_WIDTH*4.0,
                    max_perturb=bd.DEFAULT_LINE_WIDTH*8.0, 
                    verbose=opt.verbose)
-    cr = CV.context() #Cairo.Context
+    # cr = CV.context() #Cairo.Context
 
     #====== テスト ==============================
     uspan = 50 #単位スパン
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     # ow, oh = hspan*0.5, vspan*0.5
     COLS = list(crt.DARKCOL.values())
 
-    cr.set_line_width(line_width)
+    # cr.set_line_width(line_width)
 
     #====== テスト ==============================
     # cboard.Board の構成実験

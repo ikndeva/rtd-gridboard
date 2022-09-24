@@ -1,6 +1,6 @@
 # coding: utf_8
-# ctest8cbd.py
-# - アンカー点の機構を実装する．
+# ctest15side.py
+# - サイズ指定図形機構を実装する．
 # - 
 import sys
 from argparse import ArgumentParser
@@ -80,6 +80,7 @@ if __name__ == '__main__':
     # 位置指定による2D配置のテスト
     #画像枠の生成
     CV = bd.Canvas(outfile="out",
+                   #imagesize='QVGA',
                    # imagesize='VGA',
                    portrait=False,
                    boundingbox=opt.boundingbox,
@@ -138,7 +139,7 @@ if __name__ == '__main__':
     #===== 図形のテスト ==============================
     # 格子点に図形をおく
     ## row
-    if not opt.orient: opt.orient = 'y'
+    if not opt.orient: opt.orient = 'x'
     if opt.orient in ('x'): orient_outer, orient_inner = 'y', 'x'
     else: orient_outer, orient_inner = 'x', 'y'
 

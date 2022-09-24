@@ -222,8 +222,8 @@ def vt_add(vec0, vec1):
     Returns: 
          (tuple(float,float)) : vec = (x0+x1, y0+y1)
     """
-    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
-    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
+    ensure_point(vec0, name='vec0')
+    ensure_point(vec1, name='vec1')
     return vec0[0]+vec1[0], vec0[1]+vec1[1]
 
 def vt_sub(vec0, vec1):
@@ -250,8 +250,8 @@ def vt_mult(vec0, vec1):
     Returns: 
          (tuple(float,float)) : vec = (x0*x1, y0*y1)
     """
-    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
-    com.ensure(isProperPoint(vec1), f'vec1={vec1} must be a point!')
+    ensure_point(vec0, name='vec0')
+    ensure_point(vec1, name='vec1')
     return vec0[0]*vec1[0], vec0[1]*vec1[1]
 
 def vt_scale(vec0, scale=None):
@@ -265,7 +265,7 @@ def vt_scale(vec0, scale=None):
     Returns: 
          (tuple(float,float)) : vec = (scale*x0, scale*y0)
     """
-    com.ensure(isProperPoint(vec0), f'vec0={vec0} must be a point!')
+    ensure_point(vec0, name='vec0')
     if scale==None:
         return vec0
     else:
@@ -277,71 +277,169 @@ def vt_scale(vec0, scale=None):
 ## ヘルパー関数： 座表と座表変換
 ##=====
 
-def isBoxOrPoint(box):
-    """与えられたオブジェクトboxが，点または矩形かどうかを返す．
+def ensure_vector(value=None, dim=2, default=None, etype=None, nullable=True, name='it', typename='that', to_check_only=False):
+    """入力として受け取った値`value`が指定された要素型`etype`と要素数`dim`をもつ数値の組であるかを検査し，条件を満たせば値をそのまま返す．もし指定の条件を満たさなければ，エラーを投げて終了する．
+
+    * 空でなければ，値valueをそのまま返す．
+
+    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
 
     Args: 
+         value (Any) : 値
 
-         box (tuple) : オブジェクト
+         dim (int) : ベクトルの長さ
 
-    Returns: 
+         etype (tuple(type)) : 型のタプル．型の選言を表す．デフォールト値`etype=None`. 
 
-         (bool) : boxが，点または矩形ならばTrue, それ以外ならばFalse. 
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．nullable=Trueかつ値がNullならばエラーを投げる．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
+
+    Notes: 
+        データの検査を行う関数の実装用に用いる．典型的な使用例は，次の通り：
+
+        * 変数の値を保証して代入するためのフィルタの実装
+        * 値の検査術後の実装
+
+    Note: 
+        引数`etype`の組の要素として，`None`の型を与えたい時は，要素型として`type(None)`を与えること．
     """
-    if box==None:
-        return False
-    elif com.is_seq_type(box, etype=(float,int)): 
-        if (len(box) == 2) or (len(box) == 4):
-            return True
+    com.ensure(etype!=None, f'etype={etype} must be non-None!')
+    #判定関数に用いる場合の前処理
+    if to_check_only:
+        nullable = False
+        default = None
+    
+    #値が空な場合の処理
+    if value==None:
+        if nullable==True:
+            if default != None:
+                return default
+            else:
+                return None
         else:
-            return False
+            if to_check_only: return None
+            else: com.panic(f'{name}={value} must be {typename}! case 1: value(={value})==None while nullable={nullable}')
+        
+    #指定された型の値の対か？
+    if not com.is_seq_type(value, etype=etype):
+        if to_check_only: return None
+        else: com.panic(f'{name}={value} must be {typename}! case 2: value={value} is not a sequence of specified type={etype}')
+    elif len(value) != dim:
+        if to_check_only: return None
+        else: com.panic(f'{name}={value} must be {typename}! case 3: value={value} has wrong length where len(value)(={len(value)})==dim(={dim})')
     else:
-        return False
+        return value
+          
+def ensure_point(value=None, name=None, nullable=True, default=None, etype=None, to_check_only=False):
+    """値が指定された型の点（数の対）かどうかを検査し，値valueをそのまま返す．
+    条件を満たさなければ，エラーを投げて終了する．
+    関数`ensure_vector`のラッパー．
 
-def isProperPoint(box):
-    """与えられたオブジェクトboxが，点かどうかを返す．
+    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
 
     Args: 
+         value (Any) : 値
 
-         box (tuple) : オブジェクト
-    Returns: 
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．
 
-         (bool) : boxが，点ならばTrue, それ以外ならばFalse. 
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         etype (tuple(type)) : 型のタプル．型の選言を表す．数値ベクトルは，デフォールトの`etype=(int, float)`で良い．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
     """
-    if not isBoxOrPoint(box):
-        return False
-    elif len(box)!=2:
-        return False
-    else:
-        return True
+    if etype==None:
+        etype = (float,int) #要素型のdefaultは，数値型
+    return ensure_vector(value=value, default=default,
+                         etype=etype, nullable=nullable, 
+                         dim=2, name=name, typename='a point',
+                         to_check_only=to_check_only)
+    
+def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, to_check_only=False):
+    """値が指定された型の点（数の対）かどうかを検査し，値valueをそのまま返す．
+    条件を満たさなければ，エラーを投げて終了する．
+    関数`ensure_vector`のラッパー．
 
-def isProperBox(box):
-    """与えられたオブジェクトboxが，正しい矩形かをTrue, Falseで返す．
+    * 空のときに，フラグ`nullable==False`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
 
     Args: 
-         box (tuple) : オブジェクト
+         value (Any) : 値
 
-    Returns: 
-         (bool) : boxが，4座標（矩形）からなる正しい矩形ならばTrue, それ以外ならばFalse. 
+         etype (tuple(type)) : 選言型のタプル．defaultは(float,int). 
+
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．
+
+         etype (tuple(type)) : 型のタプル．型の選言を表す．数値ベクトルは，デフォールトの`etype=(int, float)`で良い．
+
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
     """
-    if not isBoxOrPoint(box):
-        return False
-    elif len(box)!=4:
-        return False
-    else:
-        x0, y0, x1, y1 = box
-        if x1 >= x0 and y1 >= y0:
-            return True
-        else:
-            return False
+    if etype==None:
+        etype = (float,int) #要素型のdefaultは，数値型
+    return ensure_vector(value=value, default=default,
+                         etype=etype, nullable=nullable, 
+                         dim=4, name=name, typename='a box',
+                         to_check_only=to_check_only)
+    
+# # # * val = ensureAnchorPoint(val:Any, default:Any, nullable:bool) -> tuple
+
+##=====
+## old: ヘルパー関数： 座表と座表変換
+##=====
+
+# def isBoxOrPoint(box):
+#     """与えられたオブジェクトboxが，点または矩形かどうかを返す．
+
+#     Args: 
+
+#          box (tuple) : オブジェクト
+
+#     Returns: 
+
+#          (bool) : boxが，点または矩形ならばTrue, それ以外ならばFalse. 
+#     """
+#     if box==None:
+#         return False
+#     elif com.is_seq_type(box, etype=(float,int)): 
+#         if (len(box) == 2) or (len(box) == 4):
+#             return True
+#         else:
+#             return False
+#     else:
+#         return False
+
+# def isProperPoint(box):
+#     """与えられたオブジェクトboxが，点かどうかを返す．後方互換性のため実装．"""
+#     value = ensure_vector(value=box, to_check_only=True, 
+#                           etype=(float,int), dim=2)
+#     if value==None: return False
+#     else: return True
+
+
+# def isProperBox(box):
+#     """与えられたオブジェクトboxが，点かどうかを返す．後方互換性のため実装．"""
+#     value = ensure_vector(value=box, to_check_only=True, 
+#                           etype=(float,int), dim=4)
+#     if value==None: return False
+#     else: return True
+
 
 def box_normalize(box):
     """4座標（矩形）からなる正しい矩形であることを検査し，2座標（点）なら4座標に正規化する．
     """
-    com.ensure(isBoxOrPoint(box), f'box must be of TypeBoundingBox: type(box)={ type(box) }')
-    if len(box)==2:
-        box = (box[0], box[1], box[0], box[1])
-    com.ensure(isProperBox(box), f'box must a properbox: box={box}')
+    ensure_box(box, name='box', nullable=False) 
+    # if len(box)==2:
+    #     box = (box[0], box[1], box[0], box[1])
+    x0, y0, x1, y1 = box
+    com.ensure((x1 - x0 >= 0) and (y1 - y0 >= 0),
+               f'box must a properbox: box={box}')
     return box
 
 def box_shape(box):
@@ -439,10 +537,8 @@ def anchor_point_by_vector(box=None, vect=None):
          (tuple(float, float)) : 包含矩形box上の点 a = (ax, ay)
     """
     #boxの準備
-    com.ensure(box != None and isProperBox(box),
-               f'box={box} must be a box!')
-    com.ensure(vect != None and isProperPoint(vect),
-               f'vect={vect} must be a pair of numbers')
+    ensure_point(box, nullable=False)
+    ensure_point(vect, nullable=False)
     x0, y0, x1, y1 = box_normalize(box) 
     # compute x-anchor 
     if x1 - x0 == 0:
@@ -687,7 +783,7 @@ def lookup_dict(dict=None, key=None, default=None):
 
          key (str) : キー文字列．大文字小文字の別は無視される．
 
-         default (ANy) : デフォールト値．
+         default (Any) : デフォールト値．
 
     Returns: 
          (Any) : キーに対応する値．ただし，値が見つからない時は，default値が返される．
@@ -876,7 +972,7 @@ def cr_arrow_head(x, y, x_last, y_last, context=None,
 
          to_surpress_short_head (bool) : 矢印頭と同程度以下の長さの線分に対して矢印頭の描画を省略する．デフォールトTrue
     
-    Note: 
+    Notes: 
 
       矢印頭の形状 `head_shape (str)` は次のいずれかの値をとる. 
 
@@ -1117,7 +1213,7 @@ def cr_text_extent(ox, oy, msg = None, context=None,
 
          (tuple) : テキストの描画情報の6つ組 (x, y, width, height, dx, dy)
 
-    Note: 
+    Notes: 
       返り値の6つ組は次の通り
 
       - x, y : テキストの配置位置．原点は左上
@@ -1291,10 +1387,8 @@ class Translate(GeoTransform):
             source = (0.0, 0.0)
 
         ## 点source を点 destへ移す並行移動 trans: (0,0) maps to (x,y) を求める．
-        com.ensure(isProperPoint(source), 
-                   f'source={source} must have type tuple(float,float)!')
-        com.ensure(isProperPoint(dest), 
-                   f'dest={dest} must have type tuple(float,float)!')
+        ensure_point(source, name='source')
+        ensure_point(dest, name='dest')
         self.x : float = dest[0] - source[0] 
         self.y : float = dest[1] - source[1]
         return
@@ -1325,7 +1419,7 @@ class Translate(GeoTransform):
         Returns: 
               (tuple(float, float)) : 変換後の点(x1, y1)
         """
-        com.ensure(isProperPoint((x, y)), f'p={ x, y } must be a point!')
+        ensure_point((x, y), name='x and y')
         x1, y1 = x + self.x, y + self.y
         return x1, y1 
     pass 
@@ -1340,7 +1434,7 @@ class Rotate(GeoTransform):
     def __init__(self, angle=None):
         com.ensure(angle!=None and isinstance(angle, (float,int)), 
                    f'angle={angle} must be non-None!')
-        com.ensure(isProperPoint((x, y)), f'p={ x, y } must be pair of float')
+        ensure_point((x, y), name='x and y')
         self.angle : float = angle
         return
 
@@ -1371,7 +1465,7 @@ class Rotate(GeoTransform):
         Returns: 
               (tuple(float, float)) : 変換後の点(x1, y1)
         """
-        com.ensure(isProperPoint((x, y)), f'p={ x, y } must be a point!')
+        ensure_point((x, y), name='x and y')
         #2次元の回転
         x1 = x*cos(self.angle) + y*(-1)*cos(self.angle)
         y1 = x*sin(self.angle) + y*cos(self.angle)

@@ -60,33 +60,31 @@ if __name__ == '__main__':
     # 位置指定による2D配置のテスト
     #画像枠の生成
     CV = bd.Canvas(outfile="out",
-                   imagesize='QVGA',
+                   # imagesize='QVGA',
                    boundingbox=opt.boundingbox, 
                    verbose=opt.verbose)
 
-    cr = CV.context()
-    #cim = CV.get_image_board() ##ImageBoardオブジェクト
-    #cr = cim.context()
+    # cr = CV.context()
 
-    def put_a_marker(x, y, rgb=None): 
-        cr.save()
-        crt.cr_draw_marker(x, y, r=2, context=cr, rgb=rgb)
-        cr.stroke()
-        cr.restore()
-        return
+    # def put_a_marker(x, y, rgb=None): 
+    #     cr.save()
+    #     crt.cr_draw_marker(x, y, r=2, context=cr, rgb=rgb)
+    #     cr.stroke()
+    #     cr.restore()
+    #     return
     
     #====== テスト ==============================
     dskip = 20
     hnum, vnum = 5, 4
     hspan, vspan = 50, 50
-    #hsize, vsize = hspan*hnum, vspan*vnum
-    hsize, vsize = CV.canvas_size()
+    hsize, vsize = hspan*hnum, vspan*vnum
+    # hsize, vsize = CV.canvas_size()
     line_width = 2 
     mygrey = crt.MYCOL['grey50']
     ow, oh = hspan*0.5, vspan*0.5
     COLS = list(crt.DARKCOL.values())
 
-    cr.set_line_width(line_width)
+    # cr.set_line_width(line_width)
 
     #====== テスト ==============================
     # cboard.Board の構成実験

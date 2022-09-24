@@ -65,15 +65,13 @@ if __name__ == '__main__':
     # 位置指定による2D配置のテスト
     #画像枠の生成
     CV = bd.Canvas(outfile="out",
-                   imagesize='QVGA',
+                   # imagesize='QVGA',
                    portrait=False,
                    boundingbox=opt.boundingbox,
                    max_perturb=bd.DEFAULT_LINE_WIDTH*4.0, 
                    verbose=opt.verbose)
 
-    cr = CV.context()
-    #cim = CV.get_image_board() ##ImageBoardオブジェクト
-    #cr = cim.context()
+    # cr = CV.context()
 
     #====== テスト ==============================
     dskip = 50
@@ -85,7 +83,7 @@ if __name__ == '__main__':
     ow, oh = hspan*0.5, vspan*0.5
     COLS = list(crt.DARKCOL.values())
 
-    cr.set_line_width(line_width)
+    #cr.set_line_width(line_width)
 
     #====== テスト ==============================
     # cboard.Board の構成実験

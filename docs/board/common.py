@@ -82,14 +82,14 @@ def elemtype_normalize(etype=None):
     if etype == None:
         return etype
     
-    etypes_ = None ## 作業用：a list for a union type
+    ety_list = None ## 作業用：a list for a union type
     if isinstance(etype, type): ## primitive type
-        etypes_ = [etype]
+        ety_list = [etype]
     elif isinstance(etype, tuple): ##union type
-        etypes_ = []
+        ety_list = []
         for idx, ty in enumerate(etype):
             if isinstance(ty, type):
-                etypes_.append(ty)
+                ety_list.append(ty)
             else: 
                 panic(f'common.is_sequence: the {idx}-th element "{ ty }"'+
                       f' of etype must be a type object!')
@@ -97,7 +97,7 @@ def elemtype_normalize(etype=None):
     else: 
         panic(f'common.is_sequence: etype="{etype}"'+
               f' must be a type object!')
-    return etypes_ 
+    return ety_list 
 
 
 
@@ -167,7 +167,7 @@ def is_seq_type(L, etype=None, dim=None, verbose=False):
         ## 全ての要素が要素型を満たした
         return True
 
-def _normalize_elemtype(etype=None): 
+    def _normalize_elemtype(etype=None): 
      """関数is_typeof()の補助関数．受け取った型または型リストelemtypeを，型リストに変換して返す．
      """
      etypes_ = None ## 作業用：a list for a union type
