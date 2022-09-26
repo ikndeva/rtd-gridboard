@@ -186,8 +186,9 @@ class Loggable:
         Note: 
              自身が既に子をもっていた場合は，エラーにならず，単に新しい子で上書きする．子が既に他の親を持っていた場合は，エラーを投げて強制終了する．
         """
-        com.ensure(isinstance(child, Loggable),
-                   f'child={child} must be a subclass of Loggable!')
+        # com.ensure(isinstance(child, Loggable),
+        #            f'child={child} must be a subclass of Loggable!')
+        com.ensure_value(child, name='child', etype=Loggable, nullable=False)
         com.ensure(child.parent == None,
                    f'parent is already defined! parent={child.parent}')
          
@@ -261,7 +262,7 @@ class Loggable:
         """
         #子の型チェック
         com.ensure((pair != None and
-                    com.is_seq_type(pair, etype=None, dim=2)),
+                    com.is_typeof_seq(pair, etype=None, dim=2)),
                    ##etype=Noneは任意の型を許し，長さ=2のみテストする
                    f'{self.myinfo()}.put(): pair={pair} must be a pair of trans and child board!')
         trans, child = pair 
@@ -306,7 +307,7 @@ class Loggable:
         """
         #子の型チェック
         com.ensure((pair != None and
-                    com.is_seq_type(pair, etype=None, dim=2)),
+                    com.is_typeof_seq(pair, etype=None, dim=2)),
                    ##etype=Noneは任意の型を許し，長さ=2のみテストする
                    f'{self.myinfo()}.put(): pair={pair} must be a pair of trans and child board!')
         trans, child = pair 
@@ -386,7 +387,7 @@ class Loggable:
             self.tags = []
         if isinstance(tags, str):
             self.tags.append(tags)
-        elif com.is_seq_type(tags, etype=str):
+        elif com.is_typeof_seq(tags, etype=str):
             for a_tag in tags:
                 if not (a_tag in self.tags): 
                     self.tags.append(a_tag)

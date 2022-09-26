@@ -222,8 +222,8 @@ def vt_add(vec0, vec1):
     Returns: 
          (tuple(float,float)) : vec = (x0+x1, y0+y1)
     """
-    ensure_point(vec0, name='vec0')
-    ensure_point(vec1, name='vec1')
+    com.ensure_point(vec0, name='vec0')
+    com.ensure_point(vec1, name='vec1')
     return vec0[0]+vec1[0], vec0[1]+vec1[1]
 
 def vt_sub(vec0, vec1):
@@ -250,8 +250,8 @@ def vt_mult(vec0, vec1):
     Returns: 
          (tuple(float,float)) : vec = (x0*x1, y0*y1)
     """
-    ensure_point(vec0, name='vec0')
-    ensure_point(vec1, name='vec1')
+    com.ensure_point(vec0, name='vec0')
+    com.ensure_point(vec1, name='vec1')
     return vec0[0]*vec1[0], vec0[1]*vec1[1]
 
 def vt_scale(vec0, scale=None):
@@ -265,7 +265,7 @@ def vt_scale(vec0, scale=None):
     Returns: 
          (tuple(float,float)) : vec = (scale*x0, scale*y0)
     """
-    ensure_point(vec0, name='vec0')
+    com.ensure_point(vec0, name='vec0')
     if scale==None:
         return vec0
     else:
@@ -274,120 +274,9 @@ def vt_scale(vec0, scale=None):
         return vec0[0]*scale, vec0[1]*scale 
 
 ##=====
-## ヘルパー関数： 座表と座表変換
+## ヘルパー関数： 座標と座標変換
 ##=====
 
-def ensure_vector(value=None, dim=2, default=None, etype=None, nullable=True, name='it', typename='that', to_check_only=False):
-    """入力として受け取った値`value`が指定された要素型`etype`と要素数`dim`をもつ数値の組であるかを検査し，条件を満たせば値をそのまま返す．もし指定の条件を満たさなければ，エラーを投げて終了する．
-
-    * 空でなければ，値valueをそのまま返す．
-
-    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
-    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
-
-    Args: 
-         value (Any) : 値
-
-         dim (int) : ベクトルの長さ
-
-         etype (tuple(type)) : 型のタプル．型の選言を表す．デフォールト値`etype=None`. 
-
-         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
-
-         nullable (bool) : 値がNoneでも良いことを表すフラグ．nullable=Trueかつ値がNullならばエラーを投げる．
-
-         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
-
-    Notes: 
-        データの検査を行う関数の実装用に用いる．典型的な使用例は，次の通り：
-
-        * 変数の値を保証して代入するためのフィルタの実装
-        * 値の検査術後の実装
-
-    Note: 
-        引数`etype`の組の要素として，`None`の型を与えたい時は，要素型として`type(None)`を与えること．
-    """
-    com.ensure(etype!=None, f'etype={etype} must be non-None!')
-    #判定関数に用いる場合の前処理
-    if to_check_only:
-        nullable = False
-        default = None
-    
-    #値が空な場合の処理
-    if value==None:
-        if nullable==True:
-            if default != None:
-                return default
-            else:
-                return None
-        else:
-            if to_check_only: return None
-            else: com.panic(f'{name}={value} must be {typename}! case 1: value(={value})==None while nullable={nullable}')
-        
-    #指定された型の値の対か？
-    if not com.is_seq_type(value, etype=etype):
-        if to_check_only: return None
-        else: com.panic(f'{name}={value} must be {typename}! case 2: value={value} is not a sequence of specified type={etype}')
-    elif len(value) != dim:
-        if to_check_only: return None
-        else: com.panic(f'{name}={value} must be {typename}! case 3: value={value} has wrong length where len(value)(={len(value)})==dim(={dim})')
-    else:
-        return value
-          
-def ensure_point(value=None, name=None, nullable=True, default=None, etype=None, to_check_only=False):
-    """値が指定された型の点（数の対）かどうかを検査し，値valueをそのまま返す．
-    条件を満たさなければ，エラーを投げて終了する．
-    関数`ensure_vector`のラッパー．
-
-    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
-    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
-
-    Args: 
-         value (Any) : 値
-
-         nullable (bool) : 値がNoneでも良いことを表すフラグ．
-
-         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
-
-         etype (tuple(type)) : 型のタプル．型の選言を表す．数値ベクトルは，デフォールトの`etype=(int, float)`で良い．
-
-         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
-    """
-    if etype==None:
-        etype = (float,int) #要素型のdefaultは，数値型
-    return ensure_vector(value=value, default=default,
-                         etype=etype, nullable=nullable, 
-                         dim=2, name=name, typename='a point',
-                         to_check_only=to_check_only)
-    
-def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, to_check_only=False):
-    """値が指定された型の点（数の対）かどうかを検査し，値valueをそのまま返す．
-    条件を満たさなければ，エラーを投げて終了する．
-    関数`ensure_vector`のラッパー．
-
-    * 空のときに，フラグ`nullable==False`ならば即時にエラーを投げて停止する．
-    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
-
-    Args: 
-         value (Any) : 値
-
-         etype (tuple(type)) : 選言型のタプル．defaultは(float,int). 
-
-         nullable (bool) : 値がNoneでも良いことを表すフラグ．
-
-         etype (tuple(type)) : 型のタプル．型の選言を表す．数値ベクトルは，デフォールトの`etype=(int, float)`で良い．
-
-         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
-
-         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
-    """
-    if etype==None:
-        etype = (float,int) #要素型のdefaultは，数値型
-    return ensure_vector(value=value, default=default,
-                         etype=etype, nullable=nullable, 
-                         dim=4, name=name, typename='a box',
-                         to_check_only=to_check_only)
-    
 # # # * val = ensureAnchorPoint(val:Any, default:Any, nullable:bool) -> tuple
 
 ##=====
@@ -407,7 +296,7 @@ def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, t
 #     """
 #     if box==None:
 #         return False
-#     elif com.is_seq_type(box, etype=(float,int)): 
+#     elif com.is_typeof_seq(box, etype=(float,int)): 
 #         if (len(box) == 2) or (len(box) == 4):
 #             return True
 #         else:
@@ -417,7 +306,7 @@ def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, t
 
 # def isProperPoint(box):
 #     """与えられたオブジェクトboxが，点かどうかを返す．後方互換性のため実装．"""
-#     value = ensure_vector(value=box, to_check_only=True, 
+#     value = com.ensure_vector(value=box, to_check_only=True, 
 #                           etype=(float,int), dim=2)
 #     if value==None: return False
 #     else: return True
@@ -425,7 +314,7 @@ def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, t
 
 # def isProperBox(box):
 #     """与えられたオブジェクトboxが，点かどうかを返す．後方互換性のため実装．"""
-#     value = ensure_vector(value=box, to_check_only=True, 
+#     value = com.ensure_vector(value=box, to_check_only=True, 
 #                           etype=(float,int), dim=4)
 #     if value==None: return False
 #     else: return True
@@ -434,7 +323,7 @@ def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, t
 def box_normalize(box):
     """4座標（矩形）からなる正しい矩形であることを検査し，2座標（点）なら4座標に正規化する．
     """
-    ensure_box(box, name='box', nullable=False) 
+    com.ensure_box(box, name='box', nullable=False) 
     # if len(box)==2:
     #     box = (box[0], box[1], box[0], box[1])
     x0, y0, x1, y1 = box
@@ -442,7 +331,19 @@ def box_normalize(box):
                f'box must a properbox: box={box}')
     return box
 
-def box_shape(box):
+def box_from_shape(shape=None, origin=None):
+    """形状shape=(sx, sy)を受け取り，矩形 box = (x0, y0, x1, y1)を返す．
+    """
+    com.ensure_point(shape, name='shape', nullable=False) 
+    if origin==None:
+        origin = 0.0, 0.0
+    else:
+        com.ensure_point(origin, name='origin') 
+    x0, y0 = origin
+    x1, y1 = vt_add(origin, shape)
+    return x0, y0, x1, y1 
+
+def box_to_shape(box):
     """矩形 box = (x0, y0, x1, y1)を受け取り，その幅widthと高さheightを返す．
     """
     x0, y0, x1, y1 = box_normalize(box)
@@ -483,21 +384,23 @@ def _anchor_str_normalize(anchor_str=None, default=None):
                                         default=ANCHOR_STR_ORIGIN)
     elif isinstance(anchor_str, str):
         anchor_str = (anchor_str, anchor_str)
-    elif com.is_seq_type(anchor_str, etype=(str), dim=2):
+    elif com.is_typeof_seq(anchor_str, etype=(str), dim=2):
         pass 
     else:
         com.panic(f'anchor_str={anchor_str} must be either str or (str,str)!')
     return anchor_str
 
-def _anchor_str_to_normal_value(adict=None, key=None):
+def _anchor_str_to_normal_value(adict=None, key=None, strict=False):
     """アンカー値の辞書`adict`とアンカー文字列`key`を受け取り，対応する正規化アンカー値`aval in [0,1]`を返す．
     """
     if key!=None and key in adict:
         return adict[key]
+    elif strict:
+        com.panic(f'no such anchor_value for key={key}')
     else:
         return DEFAULT_ANCHOR_VALUE
 
-def anchor_vector(anchor_str=None, default=None):
+def anchor_vector(anchor_str=None, default=None, strict=False):
     """文字列対によるアンカー表記を受け取り，対応する正規化アンカーベクトル`a = (ax,ay) in [0,1]^2`を返す．
 
     Args:
@@ -523,8 +426,8 @@ def anchor_vector(anchor_str=None, default=None):
     """
     str_pair = _anchor_str_normalize(anchor_str=anchor_str,
                                      default=default)
-    ax = _anchor_str_to_normal_value(adict=ANCHOR_X, key=str_pair[0])
-    ay = _anchor_str_to_normal_value(adict=ANCHOR_X, key=str_pair[1])
+    ax = _anchor_str_to_normal_value(adict=ANCHOR_X, key=str_pair[0], strict=strict)
+    ay = _anchor_str_to_normal_value(adict=ANCHOR_Y, key=str_pair[1], strict=strict)
     return (ax, ay)
 
 def anchor_point_by_vector(box=None, vect=None):
@@ -537,8 +440,8 @@ def anchor_point_by_vector(box=None, vect=None):
          (tuple(float, float)) : 包含矩形box上の点 a = (ax, ay)
     """
     #boxの準備
-    ensure_point(box, nullable=False)
-    ensure_point(vect, nullable=False)
+    com.ensure_box(box, name='box', nullable=False)
+    com.ensure_point(vect, name='vect', nullable=False)
     x0, y0, x1, y1 = box_normalize(box) 
     # compute x-anchor 
     if x1 - x0 == 0:
@@ -572,7 +475,7 @@ def get_display_shape(shape=None, portrait=None):
     elif (isinstance(shape, str) and
         shape in DISPLAY_SHAPE): 
         _shape = DISPLAY_SHAPE[shape]
-    elif com.is_seq_type(shape, etype=(float,int), dim=2):
+    elif com.is_typeof_seq(shape, etype=(float,int), dim=2):
         _shape = shape
     else:
         com.panic(f'shape={shape} must be either (str) or (number,number)!')
@@ -661,7 +564,7 @@ class ImageBoard:
         self.myoutfile = mybody + "." + OFILE_EXT #ファイル名
 
         ##画像サイズ
-        com.ensure(com.is_seq_type(self.display_shape, etype=(int, float)),
+        com.ensure(com.is_typeof_seq(self.display_shape, etype=(int, float)),
                    f'display_shape must be a pair of numbers: {display_shape}')
         
         ## Cairoのサーフェースの生成
@@ -1025,7 +928,7 @@ def cr_arrow_head(x, y, x_last, y_last, context=None,
         return 
 
     ## 矢印処理
-    com.ensure(com.is_seq_type((x, y, x_last, y_last), etype=(float, int)),
+    com.ensure(com.is_typeof_seq((x, y, x_last, y_last), etype=(float, int)),
                f'crtool.cr_arrow_head: x, y, x_last, y_last'+
                f'={ x, y, x_last, y_last } must be float or int!')
     #lineの方向line_angleを計算する
@@ -1128,7 +1031,7 @@ def cr_rectangle(x=None, y=None, width=None, height=None,
     """
     ## 文脈パラメータ設定
     cr_set_context_parameters(context=context, **kwargs)
-    com.ensure(com.is_seq_type((x,y,width, height), etype=(float, int)),
+    com.ensure(com.is_typeof_seq((x,y,width, height), etype=(float, int)),
                f'(x,y,width, height)={(x,y,width, height)} must be numbers!')
     if edge_rgb:
         #fill and edge
@@ -1361,40 +1264,34 @@ class GeoTransform():
     pass 
 
 class Translate(GeoTransform):
-    """並行移動の変換のクラス．次の引数 destかsourceのどちらか一つを指定する．
+    """並行移動の変換のクラス．次の引数 destかsrcのどちらか一つを指定する．
 
     Args: 
          dest (tuple(float,float)) : 原点を移す先の点の座標
 
-         source (tuple(float,float)) : 点原点に移す元の点（アンカー）
+         src (tuple(float,float)) : 点原点に移す元の点（アンカー）
 
-    	 x (float) : x方向の移動量. obsolute 
-    
-    	 y (float) : y方向の移動量. obsolute 
-    
+    Attributes: 
+    move (tuple(float, float)) : 並行移動ベクトル `vect = (tx, ty)`
     """
     def __init__(self,
-                 x=None, y=None,
-                 dest=None, source=None,
+                 dest=None, src=None,
+                 # x=None, y=None,
                  ):
         #正規化
-        if x!=None and y!=None:
-            dest = (x, y)
-        elif dest == None:            
+        if dest == None:            
             dest = (0.0, 0.0)
-            
-        if source == None:
-            source = (0.0, 0.0)
+        if src == None:
+            src = (0.0, 0.0)
 
-        ## 点source を点 destへ移す並行移動 trans: (0,0) maps to (x,y) を求める．
-        ensure_point(source, name='source')
-        ensure_point(dest, name='dest')
-        self.x : float = dest[0] - source[0] 
-        self.y : float = dest[1] - source[1]
+        ## 点src を点 destへ移す並行移動 trans: (0,0) maps to (x,y) を求める．
+        com.ensure_point(src, name='src')
+        com.ensure_point(dest, name='dest')
+        self.move =  vt_sub(dest, src)
         return
 
     def __str__(self):
-        return f'Translate{(self.x, self.y)}'
+        return f'Translate{self.move}'
 
     def apply_context(context=None, verbose=False):
         """
@@ -1404,7 +1301,8 @@ class Translate(GeoTransform):
               verbose (bool) : デバッグ出力のフラグ．default=False. 
         """
         com.ensure(context != None, f'context must be non-None!')
-        context.translate(self.x, self.y)
+        tx, ty = self.move
+        context.translate(tx, ty)
         return 
 
     ##Override
@@ -1419,10 +1317,75 @@ class Translate(GeoTransform):
         Returns: 
               (tuple(float, float)) : 変換後の点(x1, y1)
         """
-        ensure_point((x, y), name='x and y')
-        x1, y1 = x + self.x, y + self.y
+        com.ensure_point((x, y), name='x and y')
+        tx, ty = self.move
+        x1, y1 = x + tx, y + ty
         return x1, y1 
     pass 
+
+# class Translate(GeoTransform):
+#     """並行移動の変換のクラス．次の引数 destかsrcのどちらか一つを指定する．
+
+#     Args: 
+#          dest (tuple(float,float)) : 原点を移す先の点の座標
+
+#          src (tuple(float,float)) : 点原点に移す元の点（アンカー）
+
+#     	 x (float) : x方向の移動量. obsolute 
+    
+#     	 y (float) : y方向の移動量. obsolute 
+    
+#     """
+#     def __init__(self,
+#                  x=None, y=None,
+#                  dest=None, src=None,
+#                  ):
+#         #正規化
+#         if x!=None and y!=None:
+#             dest = (x, y)
+#         elif dest == None:            
+#             dest = (0.0, 0.0)
+            
+#         if src == None:
+#             src = (0.0, 0.0)
+
+#         ## 点src を点 destへ移す並行移動 trans: (0,0) maps to (x,y) を求める．
+#         com.ensure_point(src, name='src')
+#         com.ensure_point(dest, name='dest')
+#         self.x : float = dest[0] - src[0] 
+#         self.y : float = dest[1] - src[1]
+#         return
+
+#     def __str__(self):
+#         return f'Translate{(self.x, self.y)}'
+
+#     def apply_context(context=None, verbose=False):
+#         """
+#         Args: 
+#               context (cairo.Context) : 文脈. 
+
+#               verbose (bool) : デバッグ出力のフラグ．default=False. 
+#         """
+#         com.ensure(context != None, f'context must be non-None!')
+#         context.translate(self.x, self.y)
+#         return 
+
+#     ##Override
+#     def apply_point(self, x:float, y:float) -> tuple:
+#         """変換を点(x, y)に適用した結果(x1, y1)を返す．
+
+#         Args: 
+#               x (float) : 適用対象の点のx座標
+
+#               y (float) : 適用対象の点のy座標
+
+#         Returns: 
+#               (tuple(float, float)) : 変換後の点(x1, y1)
+#         """
+#         com.ensure_point((x, y), name='x and y')
+#         x1, y1 = x + self.x, y + self.y
+#         return x1, y1 
+#     pass 
 
 class Rotate(GeoTransform):
     """並行移動の変換のクラス
@@ -1434,7 +1397,7 @@ class Rotate(GeoTransform):
     def __init__(self, angle=None):
         com.ensure(angle!=None and isinstance(angle, (float,int)), 
                    f'angle={angle} must be non-None!')
-        ensure_point((x, y), name='x and y')
+        com.ensure_point((x, y), name='x and y')
         self.angle : float = angle
         return
 
@@ -1465,7 +1428,7 @@ class Rotate(GeoTransform):
         Returns: 
               (tuple(float, float)) : 変換後の点(x1, y1)
         """
-        ensure_point((x, y), name='x and y')
+        com.ensure_point((x, y), name='x and y')
         #2次元の回転
         x1 = x*cos(self.angle) + y*(-1)*cos(self.angle)
         y1 = x*sin(self.angle) + y*cos(self.angle)
@@ -1509,7 +1472,9 @@ def cr_apply_trans(trans=None, context=None, verbose=False):
     else: 
         if isinstance(trans, GeoTransform):
             if isinstance(trans, Translate):
-                context.translate(trans.x, trans.y)
+                x, y = trans.move
+                context.translate(x, y)
+                # context.translate(trans.x, trans.y)
             else:
                 panic(f'no such GeoTransform is implemented!')
         else: 

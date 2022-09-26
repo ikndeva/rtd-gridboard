@@ -58,7 +58,7 @@ def get(kwargs=None, key=None, altkeys=None, required=False, default=None):
         else: com.panic(f'key="{key}" must be str!')
     ## altkeysを処理
     if altkeys != None: 
-        if com.is_seq_type(altkeys, etype=str, verbose=True): 
+        if com.is_typeof_seq(altkeys, etype=str, verbose=True): 
             keys_.extend(altkeys)
         else: com.panic(f'altkeys="{altkeys}" must be of sequence type (str, tuple, list, dict...)!')
 

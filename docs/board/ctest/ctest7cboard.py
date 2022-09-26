@@ -90,7 +90,7 @@ if __name__ == '__main__':
     #====== テスト ==============================
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     A = bd.Board(tags='A')
-    CV.put(trans=crt.Translate(x=dskip, y=dskip),
+    CV.put(trans=crt.Translate(dest=(dskip, dskip)),
            child=A)
     
     ## row
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     for i in range(vnum):
         ## 行オブジェクトB
         B = bd.Board(tags='B::Line')
-        A.put(trans=crt.Translate(x=0, y=vspan*i),
+        A.put(trans=crt.Translate(dest=(0, vspan*i)),
               child=B)
         for j in range(hnum):
             C = bd.Board(tags='C::ParentDrawCmd')
@@ -112,40 +112,13 @@ if __name__ == '__main__':
                 #描画オブジェクトD
                 D = bd.DrawCircle(x=0, y=0, r=hspan*0.25-line_width*0.5, 
                                   source_rgb=rgb, tags='tag::DrawCircle')
-                C.put(trans=crt.Translate(x=hspan*0.25, y=hspan*0.25),
+                C.put(trans=crt.Translate(dest=(hspan*0.25, hspan*0.25)),
                       child=D)
-            B.put(trans=crt.Translate(x=hspan*j, y=0),
+            B.put(trans=crt.Translate(dest=(hspan*j, 0)),
                   child=C)
             ## セルオブジェクトC 
             oid += 1
     
-    # #====== テスト ==============================
-    # ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
-    # A = bd.Board()
-    # CV.put(trans=crt.Translate(x=dskip, y=dskip),
-    #        child=A)
-    
-    # ## row
-    # oid = 0
-    # for i in range(vnum):
-    #     ## 行オブジェクトB
-    #     B = bd.Board()
-    #     A.put(trans=crt.Translate(x=0, y=vspan*i),
-    #            child=B)
-    #     for j in range(hnum):
-    #         rgb = COLS[oid % vnum ]
-    #         # rgb = COLS[oid % len(COLS)]
-    #         if i % 2 == 0: 
-    #             C = bd.DrawRectangle(x=0, y=0, width=oh, height=oh,
-    #                                  source_rgb=rgb)
-    #         else: 
-    #             C = bd.DrawCircle(x=hspan*0.25, y=hspan*0.25,
-    #                               r=hspan*0.25-line_width*0.5, 
-    #                               source_rgb=rgb)
-    #         ## セルオブジェクトC 
-    #         B.put(trans=crt.Translate(x=hspan*j, y=0),
-    #               child=C)
-    #         oid += 1
     
     #====== 描画 ==============================
     

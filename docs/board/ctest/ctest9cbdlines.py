@@ -89,14 +89,14 @@ if __name__ == '__main__':
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     A = bd.Board(tags='A')
-    CV.put(trans=crt.Translate(x=dskip, y=dskip), child=A)
+    CV.put(trans=crt.Translate(dest=(dskip, dskip)), child=A)
     
     ## row
     oid = 0
     for i in range(vnum):
         ## 行オブジェクトB
         B = bd.Board(tags='B::Line')
-        A.put(trans=crt.Translate(x=0, y=vspan*i), child=B)
+        A.put(trans=crt.Translate(dest=(0, vspan*i)), child=B)
         for j in range(hnum):
             C = bd.Board(tags='C::ParentDrawCmd')
             rgb = COLS[oid % vnum ]
@@ -109,10 +109,10 @@ if __name__ == '__main__':
                 #描画オブジェクトD
                 D = bd.DrawCircle(x=0, y=0, r=hspan*0.25-line_width*0.5, 
                                   source_rgb=rgb, tags='tag::DrawCircle')
-                C.put(trans=crt.Translate(x=hspan*0.25, y=hspan*0.25),
+                C.put(trans=crt.Translate(dest=(hspan*0.25, hspan*0.25)),
                       child=D)
             LEAF_LIST.append(D)
-            B.put(trans=crt.Translate(x=hspan*j, y=0),
+            B.put(trans=crt.Translate(dest=(hspan*j, 0)),
                   child=C)
             ## セルオブジェクトC 
             oid += 1    
@@ -128,7 +128,7 @@ if __name__ == '__main__':
                           # linecap='butt', 
                           # linejoin='bevel', 
                           )
-    A.put(trans=crt.Translate(x=0, y=0), child=PL)
+    A.put(trans=crt.Translate(dest=(0, 0)), child=PL)
     if opt.verbose:
         print(f'@debug: line: hnum, vnum { hnum, vnum  }: ')
     ncol = 0

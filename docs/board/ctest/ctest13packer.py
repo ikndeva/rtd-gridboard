@@ -119,7 +119,7 @@ if __name__ == '__main__':
     for i in range(vnum+1): #row
         for j in range(hnum+1): #column
             #描画オブジェクト: circle
-            MarkerBoard.put(trans=crt.Translate(x=hspan*j, y=vspan*i),
+            MarkerBoard.put(trans=crt.Translate(dest=(hspan*j, vspan*i)),
                             child=bd.DrawCircle(x=0, y=0, r=3,
                                                 line_width=0.75,
                                                 anchor_x='center',
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     if opt.orient in ('x'): orient_outer, orient_inner = 'y', 'x'
     else: orient_outer, orient_inner = 'x', 'y'
 
-    VStack = DrawingPanel.put(trans=crt.Translate(x=0, y=0),
+    VStack = DrawingPanel.put(trans=crt.Translate(dest=(0, 0)),
                               child=bd.PackerBoard(orient=orient_outer,
                                                    pack=False,
                                                    ))

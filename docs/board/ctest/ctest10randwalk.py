@@ -92,7 +92,7 @@ if __name__ == '__main__':
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     A = bd.Board().add_tag('A').add_tag('panel')
-    CV.put(trans=crt.Translate(x=dskip, y=dskip), child=A)
+    CV.put(trans=crt.Translate(dest=(dskip, dskip)), child=A)
 
     #A = 
     CV.put(child=bd.DrawRectangle(x=0, y=0, width=hsize, height=vsize,
@@ -117,14 +117,14 @@ if __name__ == '__main__':
                           # linecap='butt', 
                           # linejoin='bevel',                          
                           )
-    A.put(trans=crt.Translate(x=0, y=0), child=PL)
+    A.put(trans=crt.Translate(dest=(0, 0)), child=PL)
     MFL = 1.0 #平均自由行程
     #MFL = 0.3 #平均自由行程
     dx, dy = MFL*hspan, MFL*vspan
     if opt.verbose:
         print(f'@debug: line: hnum, vnum { hnum, vnum  }: ')
     x, y = hsize*random.random(), vsize*random.random()
-    A.put(trans=crt.Translate(x=x, y=y), child=bd.DrawCircle(x=0, y=0, r=5, rgb=crt.MYCOL['magenta']))
+    A.put(trans=crt.Translate(dest=(x, y)), child=bd.DrawCircle(x=0, y=0, r=5, rgb=crt.MYCOL['magenta']))
     PL.move_to(x, y)
     ncol = 0
     for i in range(opt.numpoints):
@@ -135,7 +135,7 @@ if __name__ == '__main__':
         col_ = COLS[(ncol % len(COLS))]
         if opt.verbose: 
             print(f'@debug: walk: {i}: { x,y }')
-        A.put(trans=crt.Translate(x, y), child=bd.DrawCircle(x=0, y=0, r=1, fill='fill', rgb=crt.MYCOL['red']))
+        A.put(trans=crt.Translate((x, y)), child=bd.DrawCircle(x=0, y=0, r=1, fill='fill', rgb=crt.MYCOL['red']))
         #put_a_marker(x, y, rgb=crt.MYCOL['lightgreen'])
         PL.line_to(x, y, has_arrow=True,
                    )

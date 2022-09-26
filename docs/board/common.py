@@ -68,6 +68,31 @@ def report_module_path(name):
           log(f' - { d }')
           log(f'@paths end')
 
+def ensure_defined(value=None, default=None, required=False):
+	"""空でなければ，値valueをそのまま返す．代入時に，変数の値が空でないことを保証するために用いる．
+
+	* 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
+	* そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
+
+	Args: 
+	     value (Any) : 値
+
+	     default (Any) : デフォールト値
+
+	     required (bool) : 値が非Noneであることを要請するフラグ．
+	"""
+	if value==None:
+		if required==False and default != None:
+			return default
+		else: 
+			panic('ensure_defined: value={value} is required and default={default}!:')
+	else:
+		return value 
+          
+##=====
+## 便利関数：型チェック
+##=====
+
 def elemtype_normalize(etype=None):
     """与えられた入力オブジェクトetypeが，正しい型オブジェクトかを検査し，
     型リストetypes_を返す．もしそうでなければ，エラーを投げて異常終了する．
@@ -99,9 +124,27 @@ def elemtype_normalize(etype=None):
               f' must be a type object!')
     return ety_list 
 
+def _normalize_elemtype(etype=None): 
+    """関数is_typeof_value()の補助関数．受け取った型または型リストelemtypeを，型リストに変換して返す．
+    """
+    etypes_ = None ## 作業用：a list for a union type
+    # if etype == None:
+    #      panic(f'normalize_etype: etype must be non-None!')
+    ensure_defined(etype, required=True)
+    if isinstance(etype, type): ## primitive type
+        etypes_ = [etype]
+    elif isinstance(etype, tuple): ##union type
+        etypes_ = []
+        for idx, ty in enumerate(etype):
+            if isinstance(ty, type):
+                etypes_.append(ty)
+            else: 
+                panic(f'normalize_etype: the {idx}-th element "{ ty }" of etype must be a type object!')
+    else: 
+        panic(f'normalize_elemtype: etype="{elemetype}" must be a type object!')
+    return etypes_
 
-
-def is_seq_type(L, etype=None, dim=None, verbose=False):
+def is_typeof_seq(L, etype=None, dim=None, verbose=False):
     """オブジェクトLが，指定された型と長さをもつ系列オブジェクトかを真偽で返す．
     さらに系列型であり，etypeがNoneでないときに，系列の全ての要素が型etypeをもつならば`True`，そうでなければ`False`を返す．
 
@@ -119,15 +162,15 @@ def is_seq_type(L, etype=None, dim=None, verbose=False):
 
     Example:: 
 
-       >>> com.is_seq_type([1,2,3], etype=int)
+       >>> com.is_typeof_seq([1,2,3], etype=int)
        True
-       >>> com.is_seq_type([1,2.0,3], etype=int)
+       >>> com.is_typeof_seq([1,2.0,3], etype=int)
        False
-       >>> com.is_seq_type([1,2.0,3], etype=(int, float))
+       >>> com.is_typeof_seq([1,2.0,3], etype=(int, float))
        True
-       >>> com.is_seq_type([1,'b',3], etype=int)
+       >>> com.is_typeof_seq([1,'b',3], etype=int)
        False
-       >>> com.is_seq_type([1,'b',3], etype=(int, str))     
+       >>> com.is_typeof_seq([1,'b',3], etype=(int, str))     
        True 
     """
     ## 型引数のテスト
@@ -167,27 +210,7 @@ def is_seq_type(L, etype=None, dim=None, verbose=False):
         ## 全ての要素が要素型を満たした
         return True
 
-    def _normalize_elemtype(etype=None): 
-     """関数is_typeof()の補助関数．受け取った型または型リストelemtypeを，型リストに変換して返す．
-     """
-     etypes_ = None ## 作業用：a list for a union type
-     if etype == None:
-          panic(f'normalize_etype: etype must be non-None!')
-     else:
-          if isinstance(etype, type): ## primitive type
-               etypes_ = [etype]
-          elif isinstance(etype, tuple): ##union type
-               etypes_ = []
-               for idx, ty in enumerate(etype):
-                    if isinstance(ty, type):
-                         etypes_.append(ty)
-                    else: 
-                         panic(f'normalize_etype: the {idx}-th element "{ ty }" of etype must be a type object!')
-          else: 
-               panic(f'normalize_elemtype: etype="{elemetype}" must be a type object!')
-     return etypes_
-          
-def is_typeof(obj, etype=None):
+def is_typeof_value(obj, etype=None):
      """オブジェクトobjが空でなく，型etypeをもつとき，`True`を返し，それ以外のとき`False`を返す．
 
      Args: 
@@ -208,31 +231,196 @@ def is_typeof(obj, etype=None):
      return False ##どの型も満たさない
 
 
-def ensure_defined(value=None, default=None, required=False):
-	"""空でなければ，値valueをそのまま返す．代入時に，変数の値が空でないことを保証するために用いる．
+##=====
+## 便利関数：型チェック
+##=====
 
-	* 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
-	* そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
+def _simple_type_name(etype=None):
+    # ensure(etype!=None, f'etype={None} must be defined!')
+    ensure_defined(etype, required=True)
+    if not isinstance(etype, tuple):
+        return f'{etype.__name__}'
+    else:
+        s = f'tuple('
+        for idx, ty in enumerate(etype):
+            if idx > 0: s += ', '
+            s += f'{_simple_type_name(etype=ty)}'
+        return s + ')'
 
-	Args: 
-	     value (Any) : 値
+def ensure_value(value=None, default=None, etype=None, nullable=True, name='it', typename=None, to_check_only=False):
+    """入力として受け取った値`value`が指定された要素型`etype`の値であるかを検査し，条件を満たせば値をそのまま返す．もし指定の条件を満たさなければ，エラーを投げて終了する．
 
-	     default (Any) : デフォールト値
+    * 空でなければ，値valueをそのまま返す．
 
-	     required (bool) : 値が非Noneであることを要請するフラグ．
-	"""
-	if value==None:
-		if required==False and default != None:
-			return default
-		else: 
-			panic('ensure_defined: value={value} is required and default={default}!:')
-	else:
-		return value 
+    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
+
+    Args: 
+         value (Any) : 値
+
+         etype (tuple(type)) : 型のタプル．型の選言を表す．デフォールト値`etype=None`. 
+
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．nullable=Trueかつ値がNullならばエラーを投げる．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
+
+    Notes: 
+        データの検査を行う関数の実装用に用いる．典型的な使用例は，次の通り：
+
+        * 変数の値を保証して代入するためのフィルタの実装
+        * 値の型を保証した代入
+
+    Note: 
+        引数`etype`の組の要素として，`None`の型を与えたい時は，要素型として`type(None)`を与えること．
+    """
+    ensure(etype!=None, f'etype={etype} must be defined!')
+    #判定関数に用いる場合の前処理
+    if to_check_only:
+        nullable = False
+        default = None
+    if typename==None:
+        typename=_simple_type_name(etype)
+    
+    #値が空な場合の処理
+    if value==None:
+        if nullable==True:
+            if default != None:
+                return default
+            else:
+                return None
+        else:
+            if to_check_only: return None
+            else: com.panic(f'{name}={value} must be {typename}! case 1: value(={value})==None while nullable={nullable}')
+        
+    #指定された型の値の対か？
+    if is_typeof_value(value, etype=etype):
+        return value
+    else:
+        if to_check_only: return None
+        else: com.panic(f'{name}={value} must be {typename}! case 2: value={value} is not a sequence of specified type={etype}')
           
-##=====
-## 便利関数：図形データ
-##=====
+def ensure_vector(value=None, dim=2, default=None, etype=None, nullable=True, name='it', typename=None, to_check_only=False):
+    """入力として受け取った値`value`が指定された要素型`etype`と要素数`dim`をもつ数値の組であるかを検査し，条件を満たせば値をそのまま返す．もし指定の条件を満たさなければ，エラーを投げて終了する．
 
+    * 空でなければ，値valueをそのまま返す．
+
+    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
+
+    Args: 
+         value (Any) : 値
+
+         dim (int) : ベクトルの長さ
+
+         etype (tuple(type)) : 型のタプル．型の選言を表す．デフォールト値`etype=None`. 
+
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．nullable=Trueかつ値がNullならばエラーを投げる．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
+
+    Notes: 
+        データの検査を行う関数の実装用に用いる．典型的な使用例は，次の通り：
+
+        * 変数の値を保証して代入するためのフィルタの実装
+        * 値の型を保証した代入
+
+    Note: 
+        引数`etype`の組の要素として，`None`の型を与えたい時は，要素型として`type(None)`を与えること．
+    """
+    ensure(etype!=None, f'etype={etype} must be non-None!')
+    #判定関数に用いる場合の前処理
+    if to_check_only:
+        nullable = False
+        default = None
+    if typename==None:
+        typename=_simple_type_name(etype)
+    
+    #値が空な場合の処理
+    if value==None:
+        if nullable==True:
+            if default != None:
+                return default
+            else:
+                return None
+        else:
+            if to_check_only: return None
+            else: com.panic(f'{name}={value} must be {typename}! case 1: value(={value})==None while nullable={nullable}')
+        
+    #指定された型の値の対か？
+    if not is_typeof_seq(value, etype=etype):
+        if to_check_only: return None
+        else: com.panic(f'{name}={value} must be {typename}! case 2: value={value} is not a sequence of specified type={etype}')
+    elif len(value) != dim:
+        if to_check_only: return None
+        else: com.panic(f'{name}={value} must be {typename}! case 3: value={value} has wrong length where len(value)(={len(value)})==dim(={dim})')
+    else:
+        return value
+          
+def ensure_point(value=None, name=None, nullable=True, default=None, etype=None, to_check_only=False):
+    """値が指定された型の点（数の対）かどうかを検査し，値valueをそのまま返す．
+    条件を満たさなければ，エラーを投げて終了する．
+    関数`ensure_vector`のラッパー．
+
+    * 空のときに，フラグ`required==True`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
+
+    Args: 
+         value (Any) : 値
+
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．
+
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         etype (tuple(type)) : 型のタプル．型の選言を表す．数値ベクトルは，デフォールトの`etype=(int, float)`で良い．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
+    """
+    if etype==None:
+        etype = (float,int) #要素型のdefaultは，数値型
+        typename='a point'
+    else:  
+        typename=_simple_type_name(etype)
+        
+    return ensure_vector(value=value, default=default,
+                         etype=etype, nullable=nullable, 
+                         dim=2, name=name, typename=typename,
+                         to_check_only=to_check_only)
+    
+def ensure_box(value=None, name=None, nullable=True, default=None, etype=None, to_check_only=False):
+    """値が指定された型の点（数の対）かどうかを検査し，値valueをそのまま返す．
+    条件を満たさなければ，エラーを投げて終了する．
+    関数`ensure_vector`のラッパー．
+
+    * 空のときに，フラグ`nullable==False`ならば即時にエラーを投げて停止する．
+    * そうでないときに，非空のデフォールト値`default`が与えられていれば，それを返す．
+
+    Args: 
+         value (Any) : 値
+
+         etype (tuple(type)) : 選言型のタプル．defaultは(float,int). 
+
+         nullable (bool) : 値がNoneでも良いことを表すフラグ．
+
+         etype (tuple(type)) : 型のタプル．型の選言を表す．数値ベクトルは，デフォールトの`etype=(int, float)`で良い．
+
+         default (Any) : 任意のデフォールト値を与える．値がNoneのとき返される．
+
+         to_check_only (bool) : もし真ならば，型を満たさない時は，エラーを投げずに実行されて，Noneを返す．default is False．ここに，to_check_onlyが真ならば，`nullable==False`および`default = None`に上書きされるので注意．
+    """
+    if etype==None:
+        etype = (float,int) #要素型のdefaultは，数値型
+        typename='a point'
+    else:  
+        typename=_simple_type_name(etype)
+    return ensure_vector(value=value, default=default,
+                         etype=etype, nullable=nullable, 
+                         dim=4, name=name, typename=typename,
+                         to_check_only=to_check_only)
+    
 ##=====
 ## 便利関数：コマンドライン入力
 ##=====

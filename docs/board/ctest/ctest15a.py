@@ -1,6 +1,6 @@
 # coding: utf_8
-# ctest8cbd.py
-# - アンカー点の機構を実装する．
+# ctest15side.py
+# - サイズ指定図形機構を実装する．
 # - 
 import sys
 from argparse import ArgumentParser
@@ -49,6 +49,9 @@ def reading_args_and_options():
     ## pack 
     ap.add_argument('-p', '--pack', action='store_true', default=False, 
                     help='show verbose messages')
+    ## max perturb ratio
+    ap.add_argument('-u', '--max_perturb_ratio', type=float, 
+                    help='set max_perturb_ratio to positive float. default=8.0')
     ## anchor 
     ap.add_argument('-x', '--anchor_x', type=str, 
                     help='set anchor_x to str')
@@ -76,15 +79,18 @@ if __name__ == '__main__':
 
     #parameters
     verbose=False
+    if opt.max_perturb_ratio==None:
+        opt.max_perturb_ratio = 8.0
 
     # 位置指定による2D配置のテスト
     #画像枠の生成
     CV = bd.Canvas(outfile="out",
+                   #imagesize='QVGA',
                    # imagesize='VGA',
                    portrait=False,
                    boundingbox=opt.boundingbox,
                    # max_perturb=bd.DEFAULT_LINE_WIDTH*4.0,
-                   max_perturb=bd.DEFAULT_LINE_WIDTH*8.0, 
+                   max_perturb=bd.DEFAULT_LINE_WIDTH*opt.max_perturb_ratio, 
                    verbose=opt.verbose)
     # cr = CV.context() #Cairo.Context
 
@@ -95,19 +101,22 @@ if __name__ == '__main__':
     # uspan = 50 #単位スパン
     dskip = 0.5*uspan
     hspan, vspan = uspan, uspan 
-    hnum, vnum = 5, 4 
+    # hnum, vnum = 5, 4 
+    hnum, vnum = 3, 1
     hair_line_width = line_width/2
     mygrey = crt.MYCOL['grey50']
-    ow, oh = hspan*1, vspan*1
+    #ow = uspan 
     # ow, oh = hspan*0.5, vspan*0.5
     COLS = list(crt.DARKCOL.values())
 
     # cr.set_line_width(line_width)
 
     if opt.margin: 
+        com.ensure(opt.margin >= 0.0 and opt.margin <= 0.5,
+                   f'opt.margin={opt.margin} must range between 0.0 to 0.5!')
         m_ratio = opt.margin
     else:
-        m_ratio = 1.0 
+        m_ratio = 0.125
     
     #====== テスト ==============================
     # cboard.Board の構成実験
@@ -115,73 +124,53 @@ if __name__ == '__main__':
     
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     DrawingPanel = CV.put(trans=crt.Translate(dest=(dskip,dskip)),
-                          child=bd.Board(tags='DrawingPanel'))
-    
-    #====== Markerのテスト ==============================
-    # 格子点にマーカーを置く
-    ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
-    MarkerBoard = DrawingPanel
-    for i in range(vnum+1): #row
-        for j in range(hnum+1): #column
-            #描画オブジェクト: circle
-            MarkerBoard.put(trans=crt.Translate(dest=(hspan*j, vspan*i)) ,
-                            child=bd.DrawCircle(x=0, y=0, r=3,
-                                                line_width=0.75,
-                                                anchor_x='center',
-                                                anchor_y='mid', 
-                                                rgb=crt.cr_add_alpha(crt.MYCOL['blue'], 0.375),
-                                                fill='fill', 
-                                                tags=f'Marker_{i}_{j}',
-                                                boundingbox=False)
-                            )
-    
-    #===== 図形のテスト ==============================
-    # 格子点に図形をおく
-    ## row
-    if not opt.orient: opt.orient = 'y'
-    if opt.orient in ('x'): orient_outer, orient_inner = 'y', 'x'
-    else: orient_outer, orient_inner = 'x', 'y'
+                          child=bd.Board(shape=(4*uspan,4*uspan), 
+                                         tags='DrawingPanel')
+                          )
 
-    VStack = DrawingPanel.put(trans=crt.Translate(dest=(0, 0)),
-                              child=bd.PackerBoard(orient=orient_outer,
-                                                   pack=False,
-                                                   # cell_margin=0, 
-                                                   # cell_margin=hspan/4, 
-                                                   ))
+    #exp: ラッパーで包んでから，子リストに加える
+    _debug_wrapper = {
+        #デバッグ用の包含矩形描画
+        'show_box': True,
+        # rgb_box=crt.MYCOL['magenta'],
+        'rgb_box':  crt.cr_add_alpha(crt.MYCOL['magenta'], alpha=0.5),
+        #デバッグ用の原点描画
+        'show_origin':  True,
+        'angle_origin':  (math.pi/4)*0,
+    }
     
-    oid = 0
-    for i in range(vnum): #行
-        Row = VStack.add(child=bd.PackerBoard(orient=orient_inner,
-                                              pack=opt.pack, 
-                                              # pack_anchor='mid', 
-                                              # cell_margin=hspan/2, 
-                                              cell_margin=hspan*m_ratio, 
-                                              ))
-        for j in range(hnum): #列
-            C = random.random() #[0,1]の乱数
-            rgb = COLS[oid % vnum ]
-            #セルの可変幅
-            if False and i % 2 == 0: ow_var, oh_var = ow, oh
-            else:          ow_var, oh_var = ow/2, oh/2
+    
+    #セルの図形
+    oid = 1
+    C = random.random() #[0,1]の乱数    
+    uspan_in = uspan*(1.0 - 2*m_ratio)
+    rgb = COLS[oid % 3 ]
+    if oid % 2 == 0:
+        child = bd.DrawRectangle(width=uspan_in*C, height=uspan_in*C,
+                                 source_rgb=rgb,
+                                 show_origin=True, 
+                )
+    else:
+        child = bd.DrawCircle(r = 0.5*uspan_in*C, 
+                              source_rgb=rgb,
+                              show_origin=True, 
+                )
+    child1 = bd.SideWrapper(child=child,
+                            side=(opt.anchor_x, opt.anchor_y),
+                            rgb_origin=crt.MYCOL['green'],
+                            verbose=True, 
+                            **_debug_wrapper, #デバッグ表示用
+                            ) 
+    child2 = bd.MarginWrapper(child=child1,
+                              shape=(2*uspan, 2*uspan), 
+                              margin=hspan*m_ratio,
+                              rgb_origin=crt.MYCOL['blue'],
+                              **_debug_wrapper, #デバッグ表示用
+                              ) 
+    DrawingPanel.put(child2)
             
-            #セルの図形
-            if oid % 2 == 0:
-                D = Row.add(bd.DrawRectangle(width=ow_var*C, height=oh_var*C,
-                                             source_rgb=rgb,
-                                             tags=f'Box_{i}_{j}',
-                                             show_origin=True, 
-                                             )
-                            )
-            else:
-                D = Row.add(bd.DrawCircle(r = ow_var*C, 
-                                          # r = 0.5*ow_var, 
-                                          source_rgb=rgb,
-                                          tags=f'Circle_{i}_{j}',
-                                          show_origin=True, 
-                                          )
-                            )
-            LEAF_LIST.append(D)
-            oid += 1
+#LEAF_LIST.append(D)
+#oid += 1
     #===== 図形のテスト ==============================
 
     #============

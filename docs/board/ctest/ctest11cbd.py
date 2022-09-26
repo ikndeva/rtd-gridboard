@@ -92,18 +92,18 @@ if __name__ == '__main__':
     ## 描画領域オブジェクトA．余白(x=dskip, y=dskip)
     DrawingPanel = bd.Board(tags='DrawingPanel')
     # DrawingPanel = bd.Board().add_tag('DrawingPanel')
-    CV.put(trans=crt.Translate(x=dskip, y=dskip), child=DrawingPanel)
+    CV.put(trans=crt.Translate(dest=(dskip, dskip)), child=DrawingPanel)
     
     ## row
     oid = 0
     for i in range(vnum):
         ## 行オブジェクトB
         RowBoard = bd.Board(tags='RowBoard::Line')
-        DrawingPanel.put(trans=crt.Translate(x=0, y=vspan*i), child=RowBoard)
+        DrawingPanel.put(trans=crt.Translate(dest=(0, vspan*i)), child=RowBoard)
         for j in range(hnum):
             C = bd.Board()
             # C = bd.AnchorBoard(anchor_x='center', anchor_y='mid')
-            RowBoard.put(trans=crt.Translate(x=hspan*j, y=0), child=C)
+            RowBoard.put(trans=crt.Translate(dest=(hspan*j, 0)), child=C)
             rgb = COLS[oid % vnum ]
             if i % 2 == 0:
                 #描画オブジェクトD
@@ -117,7 +117,7 @@ if __name__ == '__main__':
                 #描画オブジェクトD
                 D = bd.DrawCircle(x=0, y=0, r=hspan*0.25-line_width*0.5, 
                                   source_rgb=rgb, tags=f'Circle_{i}_{j}')
-                C.put(trans=crt.Translate(x=hspan*0, y=hspan*0),
+                C.put(trans=crt.Translate(dest=(hspan*0, hspan*0)),
                       child=D)
             LEAF_LIST.append(D)
             ## セルオブジェクトC 
@@ -135,8 +135,7 @@ if __name__ == '__main__':
                               line_width=0.5, 
                               rgb=crt.MYCOL['red'],
                               tags=f'Marker_{i}_{j}')
-            MarkerBoard.put(trans=crt.Translate(x=hspan*i, y=vspan*j), child=M)
-            # DrawingPanel.put(trans=crt.Translate(x=hspan*i, y=vspan*j), child=M)
+            MarkerBoard.put(trans=crt.Translate(dest=(hspan*i, vspan*j)), child=M)
     
     #====== Polylineのテスト ==============================
     PL = bd.DrawPolyLines(line_width=0.5,
@@ -144,7 +143,7 @@ if __name__ == '__main__':
                           linecap='round', 
                           linejoin='round', 
                           )
-    DrawingPanel.put(trans=crt.Translate(x=0, y=0), child=PL)
+    DrawingPanel.put(trans=crt.Translate(dest=(0, 0)), child=PL)
     if opt.verbose:
         print(f'@debug: line: hnum, vnum { hnum, vnum  }: ')
     ncol = 0
